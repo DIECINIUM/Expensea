@@ -5,6 +5,10 @@ updates:
     directory: /apps/web
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: pip
     directory: /apps/api
