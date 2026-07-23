@@ -7,6 +7,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Any, Self
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -31,6 +32,9 @@ class LogLevel(StrEnum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+DEFAULT_DEV_USER_ID = UUID("00000000-0000-4000-8000-000000000001")
 
 
 class Settings(BaseSettings):
@@ -59,6 +63,9 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = Field(default=8000, ge=1, le=65535)
     cors_origins: str = '["http://localhost:5173"]'
+
+    dev_auth_enabled: bool = True
+    dev_user_id: UUID = DEFAULT_DEV_USER_ID
 
     postgres_host: str = "localhost"
     postgres_port: int = Field(default=5432, ge=1, le=65535)
@@ -130,25 +137,30 @@ class Settings(BaseSettings):
             msg = "APP_DEBUG must be false in staging and production"
             raise ValueError(msg)
 
-        if self.app_env is not AppEnvironment.PRODUCTION:
-            return self
-
-        database = make_url(self.database_url)
-        if database.host in {"localhost", "127.0.0.1", "::1"}:
-            msg = "Production database configuration cannot target localhost"
-            raise ValueError(msg)
-        if database.password == "spendgraph":
-            msg = "Production database configuration cannot use the development password"
-            raise ValueError(msg)
-        if not self.cors_origin_list:
-            msg = "Production requires at least one explicit CORS origin"
-            raise ValueError(msg)
-
-        for origin in self.cors_origin_list:
-            hostname = urlsplit(origin).hostname
-            if hostname in {"localhost", "127.0.0.1", "::1"}:
-                msg = "Production CORS_ORIGINS cannot target localhost"
+        if self.app_env is AppEnvironment.PRODUCTION:
+            database = make_url(self.database_url)
+            if database.host in {"localhost", "127.0.0.1", "::1"}:
+                msg = "Production database configuration cannot target localhost"
                 raise ValueError(msg)
+            if database.password == "spendgraph":
+                msg = "Production database configuration cannot use the development password"
+                raise ValueError(msg)
+            if not self.cors_origin_list:
+                msg = "Production requires at least one explicit CORS origin"
+                raise ValueError(msg)
+
+            for origin in self.cors_origin_list:
+                hostname = urlsplit(origin).hostname
+                if hostname in {"localhost", "127.0.0.1", "::1"}:
+                    msg = "Production CORS_ORIGINS cannot target localhost"
+                    raise ValueError(msg)
+
+        if (
+            self.app_env in {AppEnvironment.STAGING, AppEnvironment.PRODUCTION}
+            and self.dev_auth_enabled
+        ):
+            msg = "DEV_AUTH_ENABLED must be false in staging and production"
+            raise ValueError(msg)
         return self
 
     @property

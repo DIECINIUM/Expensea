@@ -1,10 +1,12 @@
 """Configuration parsing tests."""
 
+from uuid import UUID
+
 import pytest
 from pydantic import ValidationError
 from sqlalchemy.engine import make_url
 
-from app.core.config import AppEnvironment, Settings
+from app.core.config import DEFAULT_DEV_USER_ID, AppEnvironment, Settings
 
 
 @pytest.mark.parametrize(
@@ -104,12 +106,54 @@ def test_valid_production_settings_hide_database_credentials_from_repr() -> None
     settings = Settings(
         _env_file=None,
         app_env=AppEnvironment.PRODUCTION,
+        dev_auth_enabled=False,
         database_url="postgresql+psycopg://app:top-secret@db.example.com/spendgraph",
         cors_origins='["https://app.example.com"]',
     )
 
     assert settings.cors_origin_list == ["https://app.example.com"]
     assert "top-secret" not in repr(settings)
+
+
+def test_development_auth_uses_a_fixed_server_configured_user_id() -> None:
+    configured_user_id = UUID("b950035c-8e59-455a-a71f-70f3bafc32e9")
+
+    settings = Settings(
+        _env_file=None,
+        dev_user_id=configured_user_id,
+    )
+
+    assert settings.dev_auth_enabled is True
+    assert settings.dev_user_id == configured_user_id
+    assert Settings(_env_file=None).dev_user_id == DEFAULT_DEV_USER_ID
+
+
+@pytest.mark.parametrize(
+    "environment",
+    [AppEnvironment.STAGING, AppEnvironment.PRODUCTION],
+)
+def test_deployed_environments_reject_development_auth(
+    environment: AppEnvironment,
+) -> None:
+    with pytest.raises(ValidationError, match="DEV_AUTH_ENABLED"):
+        Settings(
+            _env_file=None,
+            app_env=environment,
+            app_debug=False,
+            database_url="postgresql+psycopg://app:secret@db.example.com/spendgraph",
+            cors_origins='["https://app.example.com"]',
+        )
+
+
+def test_deployed_environment_can_disable_development_auth() -> None:
+    settings = Settings(
+        _env_file=None,
+        app_env=AppEnvironment.STAGING,
+        app_debug=False,
+        dev_auth_enabled=False,
+    )
+
+    assert settings.dev_auth_enabled is False
 
 
 def test_database_url_is_safely_derived_from_postgres_components() -> None:
