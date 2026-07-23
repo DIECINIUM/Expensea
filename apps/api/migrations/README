@@ -1,0 +1,9 @@
+Alembic migration environment for SpendGraph AI.
+
+Create revisions from apps/api with:
+
+    alembic revision --autogenerate -m "describe change"
+
+Apply migrations with:
+
+    alembic upgrade head
