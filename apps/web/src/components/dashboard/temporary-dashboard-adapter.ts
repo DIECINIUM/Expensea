@@ -1,0 +1,158 @@
+import type { DashboardPresentationData } from './types';
+
+/**
+ * Temporary compatibility data for App while the Phase 1 GraphQL operation is
+ * being implemented. Dashboard callers should replace this adapter with live
+ * query results; presentation components do not own these values.
+ */
+export const temporaryDashboardPresentationData: DashboardPresentationData = {
+  greetingName: 'Salik',
+  periodLabel: 'July',
+  summaryItems: [
+    {
+      id: 'month-spending',
+      label: 'Spent this month',
+      amount: '18540.0000',
+      currency: 'INR',
+      detail: 'Across 32 transactions',
+      trend: '8.2% below June',
+      tone: 'emerald',
+    },
+    {
+      id: 'open-payables',
+      label: 'You owe',
+      amount: '600.0000',
+      currency: 'INR',
+      detail: '1 open payable',
+      trend: 'Due in 5 days',
+      tone: 'amber',
+    },
+    {
+      id: 'open-receivables',
+      label: 'Owed to you',
+      amount: '2000.0000',
+      currency: 'INR',
+      detail: 'From 2 people',
+      trend: '₹800 due Friday',
+      tone: 'blue',
+    },
+    {
+      id: 'upcoming-recurring',
+      label: 'Upcoming',
+      amount: '1148.0000',
+      currency: 'INR',
+      detail: '3 recurring payments',
+      trend: 'Next: Spotify, 26 Jul',
+      tone: 'violet',
+    },
+  ],
+  spendingTrend: {
+    currentAmount: '18540.0000',
+    currency: 'INR',
+    comparisonLabel: 'Compared with last month',
+    statusLabel: 'Temporary preview',
+    points: [
+      { monthStart: '2026-02-01', amount: '14200.0000' },
+      { monthStart: '2026-03-01', amount: '16800.0000' },
+      { monthStart: '2026-04-01', amount: '15400.0000' },
+      { monthStart: '2026-05-01', amount: '21300.0000' },
+      { monthStart: '2026-06-01', amount: '20200.0000' },
+      { monthStart: '2026-07-01', amount: '18540.0000' },
+    ],
+  },
+  categoryBreakdown: {
+    periodLabel: 'July spending allocation',
+    statusLabel: 'Temporary preview',
+    categories: [
+      {
+        id: 'food-dining',
+        name: 'Food & dining',
+        amount: '5420.0000',
+        currency: 'INR',
+        sharePercentage: 29,
+      },
+      {
+        id: 'shopping',
+        name: 'Shopping',
+        amount: '4260.0000',
+        currency: 'INR',
+        sharePercentage: 23,
+      },
+      {
+        id: 'travel',
+        name: 'Travel',
+        amount: '3710.0000',
+        currency: 'INR',
+        sharePercentage: 20,
+      },
+      {
+        id: 'bills-recurring',
+        name: 'Bills & recurring',
+        amount: '2780.0000',
+        currency: 'INR',
+        sharePercentage: 15,
+      },
+      {
+        id: 'other',
+        name: 'Other',
+        amount: '2370.0000',
+        currency: 'INR',
+        sharePercentage: 13,
+      },
+    ],
+  },
+  recentActivity: {
+    description: 'Temporary adapter records · no GraphQL ledger query',
+    statusLabel: 'Preview',
+    tableCaption: 'Four synthetic example financial records',
+    timeZone: 'Asia/Kolkata',
+    transactions: [
+      {
+        id: 'txn-001',
+        merchantName: 'Swiggy',
+        categoryName: 'Food delivery',
+        description: 'Dinner delivery',
+        transactionDate: '2026-07-24T15:01:00Z',
+        status: 'POSTED',
+        transactionType: 'EXPENSE',
+        amount: '420.0000',
+        currency: 'INR',
+      },
+      {
+        id: 'txn-002',
+        merchantName: 'Priya',
+        categoryName: 'Receivable',
+        description: 'Cab repayment',
+        transactionDate: '2026-07-24T10:48:00Z',
+        status: 'POSTED',
+        transactionType: 'INCOME',
+        amount: '800.0000',
+        currency: 'INR',
+      },
+      {
+        id: 'txn-003',
+        merchantName: 'Uber',
+        categoryName: 'Travel',
+        description: 'Morning ride',
+        transactionDate: '2026-07-23T03:44:00Z',
+        status: 'POSTED',
+        transactionType: 'EXPENSE',
+        amount: '286.0000',
+        currency: 'INR',
+      },
+      {
+        id: 'txn-004',
+        merchantName: 'Netflix',
+        categoryName: 'Entertainment',
+        description: 'Monthly subscription',
+        transactionDate: '2026-07-21T04:30:00Z',
+        status: 'POSTED',
+        transactionType: 'EXPENSE',
+        amount: '649.0000',
+        currency: 'INR',
+      },
+    ],
+  },
+  footerNote:
+    'Financial values currently come from a temporary presentation adapter. Phase 1 GraphQL wiring will replace it with deterministic ledger data.',
+};

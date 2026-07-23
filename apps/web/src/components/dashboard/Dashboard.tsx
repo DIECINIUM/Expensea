@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react';
 
-import { summaryItems } from '../../lib/demo-data';
 import { CategoryBreakdown } from './CategoryBreakdown';
 import { InsightPanel } from './InsightPanel';
 import { QuickCaptureCard } from './QuickCaptureCard';
@@ -8,8 +7,16 @@ import { RecentActivity } from './RecentActivity';
 import { ReviewQueue } from './ReviewQueue';
 import { SpendingTrend } from './SpendingTrend';
 import { SummaryCard } from './SummaryCard';
+import { temporaryDashboardPresentationData } from './temporary-dashboard-adapter';
+import type { DashboardPresentationData } from './types';
 
-export function Dashboard() {
+interface DashboardProps {
+  readonly data?: DashboardPresentationData;
+}
+
+export function Dashboard({
+  data = temporaryDashboardPresentationData,
+}: DashboardProps) {
   return (
     <div
       id="overview"
@@ -25,10 +32,10 @@ export function Dashboard() {
               id="dashboard-heading"
               className="text-2xl font-semibold tracking-[-0.035em] text-slate-900 sm:text-[28px]"
             >
-              Good morning, Salik
+              Good morning, {data.greetingName}
             </h2>
             <p className="mt-1.5 text-xs text-slate-500">
-              Here is your explainable financial picture for July.
+              Here is your explainable financial picture for {data.periodLabel}.
             </p>
           </div>
           <a
@@ -41,32 +48,33 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {summaryItems.map((item) => (
-            <SummaryCard key={item.label} item={item} />
+          {data.summaryItems.map((item) => (
+            <SummaryCard key={item.id} item={item} />
           ))}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
           <div className="xl:col-span-2">
-            <SpendingTrend />
+            <SpendingTrend {...data.spendingTrend} />
           </div>
           <QuickCaptureCard />
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          <CategoryBreakdown />
+          <CategoryBreakdown {...data.categoryBreakdown} />
           <InsightPanel />
           <ReviewQueue />
         </div>
 
         <div className="mt-4">
-          <RecentActivity />
+          <RecentActivity {...data.recentActivity} />
         </div>
 
-        <p className="mt-5 text-center text-[10px] font-medium text-slate-600">
-          All financial values and records are synthetic Phase 0 previews. Live
-          totals will come from deterministic ledger services.
-        </p>
+        {data.footerNote && (
+          <p className="mt-5 text-center text-[10px] font-medium text-slate-600">
+            {data.footerNote}
+          </p>
+        )}
       </section>
     </div>
   );

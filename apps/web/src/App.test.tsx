@@ -43,7 +43,7 @@ describe('SpendGraph dashboard', () => {
       screen.getByRole('table', { name: /four synthetic example/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/all financial values and records are synthetic/i),
+      screen.getByText(/temporary presentation adapter/i),
     ).toBeInTheDocument();
   });
 

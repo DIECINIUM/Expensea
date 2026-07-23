@@ -5,8 +5,9 @@ import {
   WalletCards,
 } from 'lucide-react';
 
-import type { SummaryItem, SummaryTone } from '../../lib/demo-data';
+import { formatMoney } from '../../lib/ledger-formatters';
 import { Card } from './Card';
+import type { DashboardSummaryItem, SummaryTone } from './types';
 
 const toneStyles: Record<
   SummaryTone,
@@ -39,7 +40,7 @@ const toneStyles: Record<
 };
 
 interface SummaryCardProps {
-  readonly item: SummaryItem;
+  readonly item: DashboardSummaryItem;
 }
 
 export function SummaryCard({ item }: SummaryCardProps) {
@@ -52,7 +53,7 @@ export function SummaryCard({ item }: SummaryCardProps) {
         <div>
           <p className="text-xs font-medium text-slate-500">{item.label}</p>
           <p className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-slate-900">
-            {item.value}
+            {formatMoney(item.amount, item.currency)}
           </p>
         </div>
         <span
@@ -65,9 +66,11 @@ export function SummaryCard({ item }: SummaryCardProps) {
       <p className="mt-4 text-[11px] font-medium text-slate-600">
         {item.detail}
       </p>
-      <p className={`mt-1 text-[11px] font-medium ${style.detailClass}`}>
-        {item.trend}
-      </p>
+      {item.trend && (
+        <p className={`mt-1 text-[11px] font-medium ${style.detailClass}`}>
+          {item.trend}
+        </p>
+      )}
     </Card>
   );
 }
