@@ -2,10 +2,10 @@
 
 **Last updated:** 2026-07-23
 
-**Current phase:** Phase 0 — foundation
+**Current phase:** Phase 1 — deterministic ledger, first vertical slice
 
-**Rule:** do not begin Phase 1 until every Phase 0 verification item is checked from
-an actual command or manual acceptance run.
+**Rule:** implement Phase 1 through bounded vertical slices whose acceptance behavior
+is written before code and checked from actual commands.
 
 `[x]` means the artifact is present and reviewed in the repository. `[ ]` means it is
 not complete or has not yet been verified. Future-phase boxes are not defects in
@@ -138,14 +138,14 @@ dashboard values remain synthetic. No ledger or AI behavior is in scope.
 - [x] API development/production and web development container images build.
 - [x] `make stop` stops Compose services without deleting the database volume; the
   retained volume was inspected before a successful healthy restart.
-- [ ] CI is exercised on the default branch or a pull request.
+- [x] CI is exercised on the default branch.
 
 Docker Desktop for Apple silicon was used to build all configured image targets,
 start the complete healthy stack, migrate live PostgreSQL, stop without deleting the
-named volume, and restart successfully. GitHub Actions was not observed on a remote
-repository, and the in-app browser surface was unavailable. `make smoke` is the
-direct non-visual acceptance for web-to-API connectivity; it does not claim manual
-browser layout verification.
+named volume, and restart successfully. GitHub Actions subsequently passed all
+configured jobs on the default branch. `make smoke` is the direct non-visual
+acceptance for web-to-API connectivity; it does not claim manual browser layout
+verification.
 
 ### Phase 0 acceptance
 
@@ -173,6 +173,8 @@ feature is represented as real.
 
 ## Phase 1 — deterministic financial ledger
 
+- [x] Define the first vertical slice and its acceptance semantics in
+  `docs/phase1-ledger.md`.
 - [ ] Implement user profile and development-auth ownership seam.
 - [ ] Add merchant and hierarchical system/user category models.
 - [ ] Add transaction model using `Decimal`/`NUMERIC`, currency, type, and status.
