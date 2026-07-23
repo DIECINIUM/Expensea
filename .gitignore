@@ -1,0 +1,35 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node and frontend builds
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Tooling and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local-only project notes
+/docs/interview-notes.md
+
+# Logs and runtime files
+*.log
+*.pid
