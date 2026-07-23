@@ -1,10 +1,12 @@
 """Declarative metadata and deterministic numeric conventions."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, ClassVar
+from uuid import UUID, uuid4
 
-from sqlalchemy import MetaData, Numeric
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import DateTime, MetaData, Numeric, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Financial values must enter application code as Decimal and persist as NUMERIC.
 # Four fractional digits preserve source precision; display/currency rounding is a
@@ -32,3 +34,30 @@ class Base(DeclarativeBase):
             asdecimal=True,
         )
     }
+
+
+class UUIDPrimaryKeyMixin:
+    """Application-generated UUID identity shared by persisted entities."""
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+
+
+class CreatedAtMixin:
+    """Database-generated creation instant."""
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+class TimestampMixin(CreatedAtMixin):
+    """Creation and last-update instants for mutable entities."""
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

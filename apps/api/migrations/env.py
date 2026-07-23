@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from importlib import import_module
 from logging.config import fileConfig
 
 from alembic import context
@@ -12,12 +13,13 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import get_settings
 from app.db.base import Base
 
+import_module("app.models")  # Register every mapped table with Base.metadata.
+
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import future model modules above this assignment so every table is registered.
 target_metadata = Base.metadata
 
 
