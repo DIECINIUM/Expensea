@@ -35,6 +35,9 @@ packages = ["app"]
 addopts = "-ra"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+markers = [
+  "database: requires an explicitly enabled disposable PostgreSQL schema",
+]
 pythonpath = ["."]
 testpaths = ["tests"]
 

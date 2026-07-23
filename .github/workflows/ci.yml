@@ -21,6 +21,7 @@ jobs:
       POSTGRES_USER: spendgraph
       POSTGRES_PASSWORD: spendgraph
       POSTGRES_DB: spendgraph_test
+      RUN_DATABASE_TESTS: "1"
     services:
       postgres:
         image: postgres:17-alpine
@@ -59,14 +60,14 @@ jobs:
       - name: Type-check
         run: mypy --config-file apps/api/pyproject.toml apps/api/app
 
-      - name: Test
-        run: pytest apps/api/tests
-
       - name: Exercise migrations on PostgreSQL
         run: |
           alembic -c apps/api/alembic.ini upgrade head
           alembic -c apps/api/alembic.ini downgrade base
           alembic -c apps/api/alembic.ini upgrade head
+
+      - name: Test
+        run: pytest apps/api/tests
 
       - name: Audit Python dependencies
         run: pip-audit --strict -r apps/api/requirements.lock

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from typing import cast
 
 from fastapi import Request
@@ -17,8 +17,14 @@ from sqlalchemy.ext.asyncio import (
 class Database:
     """Own one application's lazy engine and session factory."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        *,
+        connect_args: Mapping[str, object] | None = None,
+    ) -> None:
         self._database_url = database_url
+        self._connect_args = dict(connect_args or {})
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
 
@@ -34,6 +40,7 @@ class Database:
                 self._database_url,
                 pool_pre_ping=True,
                 hide_parameters=True,
+                connect_args=self._connect_args,
             )
         return self._engine
 

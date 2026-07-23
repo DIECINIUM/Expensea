@@ -78,7 +78,10 @@ smoke: env
 
 test: test-api test-web
 
-test-api:
+test-api: env
+	docker compose up -d --wait db
+	@set -a; . ./.env; set +a; \
+	APP_ENV=test APP_DEBUG=false RUN_DATABASE_TESTS=1 \
 	$(VENV)/bin/pytest $(API_DIR)/tests
 
 test-web:
