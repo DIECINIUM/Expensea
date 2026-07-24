@@ -211,6 +211,10 @@ export function DashboardPage() {
       payables={data.payables}
       recurringPayments={data.recurringPayments}
       financialEventProposals={data.financialEventProposals}
+      reconciliationCases={[
+        ...data.reconciliationCases,
+        ...data.recentlyMergedReconciliationCases,
+      ]}
       onDataChanged={async () => {
         const result = await refetch();
         if (result.error) {

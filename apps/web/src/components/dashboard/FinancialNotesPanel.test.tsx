@@ -74,6 +74,52 @@ describe('FinancialNotesPanel', () => {
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
+  it('reports when approval needs a separate duplicate decision', async () => {
+    const user = userEvent.setup();
+    const onChanged = vi.fn().mockResolvedValue(undefined);
+    const awaitingReconciliation = {
+      ...existingProposal,
+      status: 'RECONCILIATION_REVIEW' as const,
+    };
+
+    render(
+      <MockedProvider
+        mocks={[
+          {
+            request: {
+              query: APPROVE_FINANCIAL_PROPOSAL_MUTATION,
+              variables: { id: existingProposal.id },
+            },
+            result: {
+              data: {
+                approveFinancialProposal: {
+                  __typename: 'ReviewFinancialProposalSuccess',
+                  proposal: awaitingReconciliation,
+                },
+              },
+            },
+          },
+        ]}
+      >
+        <FinancialNotesPanel
+          proposals={[existingProposal]}
+          onChanged={onChanged}
+        />
+      </MockedProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /approve music subscription/i,
+      }),
+    );
+
+    expect(
+      await screen.findByText(/moved to duplicate review/i),
+    ).toBeInTheDocument();
+    expect(onChanged).toHaveBeenCalledOnce();
+  });
+
   it('extracts an informal note into the review queue', async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn().mockResolvedValue(undefined);

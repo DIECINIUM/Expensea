@@ -7,6 +7,7 @@ import { ManualTransactionForm } from './ManualTransactionForm';
 import { ObligationsPanel } from './ObligationsPanel';
 import { PeoplePanel } from './PeoplePanel';
 import { RecentActivity } from './RecentActivity';
+import { ReconciliationPanel } from './ReconciliationPanel';
 import { RecurringPaymentsPanel } from './RecurringPaymentsPanel';
 import { SpendingTrend } from './SpendingTrend';
 import { SummaryCard } from './SummaryCard';
@@ -18,6 +19,7 @@ import type {
   RecurringPaymentData,
 } from '../../graphql/dashboard';
 import type { FinancialEventProposalData } from '../../graphql/financial-proposals';
+import type { ReconciliationCaseData } from '../../graphql/reconciliation';
 
 interface DashboardProps {
   readonly categories: readonly DashboardCategoryData[];
@@ -29,6 +31,7 @@ interface DashboardProps {
   readonly payables: readonly ObligationData[];
   readonly recurringPayments: readonly RecurringPaymentData[];
   readonly financialEventProposals: readonly FinancialEventProposalData[];
+  readonly reconciliationCases: readonly ReconciliationCaseData[];
   readonly onDataChanged: () => Promise<void>;
   readonly refreshWarning: string | null;
 }
@@ -43,6 +46,7 @@ export function Dashboard({
   payables,
   recurringPayments,
   financialEventProposals,
+  reconciliationCases,
   onDataChanged,
   refreshWarning,
 }: DashboardProps) {
@@ -153,6 +157,10 @@ export function Dashboard({
         <section id="intelligence" className="mt-8 scroll-mt-24">
           <FinancialNotesPanel
             proposals={financialEventProposals}
+            onChanged={onDataChanged}
+          />
+          <ReconciliationPanel
+            cases={reconciliationCases}
             onChanged={onDataChanged}
           />
         </section>

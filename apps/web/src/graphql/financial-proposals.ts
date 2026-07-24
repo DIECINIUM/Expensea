@@ -127,7 +127,8 @@ export type FinancialProposalSource =
   | 'GMAIL'
   | 'GOOGLE_KEEP_TAKEOUT';
 
-export type FinancialProposalStatus = 'NEEDS_REVIEW' | 'APPROVED' | 'REJECTED';
+export type FinancialProposalStatus =
+  'NEEDS_REVIEW' | 'RECONCILIATION_REVIEW' | 'APPROVED' | 'REJECTED';
 
 export interface FinancialEventProposalData {
   readonly __typename: 'FinancialEventProposalType';

@@ -146,6 +146,55 @@ export const dashboardQueryData = {
       canonicalTargetId: null,
     },
   ],
+  reconciliationCases: [
+    {
+      __typename: 'ReconciliationCaseType',
+      id: 'reconciliation-1',
+      normalizedEventId: 'normalized-event-1',
+      source: 'MOCK_RECEIPT',
+      eventKind: 'EXPENSE',
+      amount: '480.0000',
+      currency: 'INR',
+      description: 'Card purchase',
+      occurredAt: '2026-07-24T15:02:00Z',
+      merchantName: 'Swiggy',
+      candidateTransactionId: 'transaction-candidate-1',
+      candidateDescription: 'Swiggy dinner order',
+      candidateOccurredAt: '2026-07-24T15:01:00Z',
+      candidateMerchantName: 'Swiggy',
+      resultingTransactionId: null,
+      initialDecision: 'POSSIBLE_DUPLICATE',
+      status: 'PENDING',
+      score: '0.8000',
+      scoreVersion: 'reconciliation-score/v1',
+      reasons: [
+        'AMOUNT_CURRENCY_EXACT',
+        'TIME_CLOSE',
+        'MERCHANT_EXACT',
+        'SCORE_POSSIBLE_DUPLICATE',
+      ],
+      createdAt: '2026-07-24T15:03:00Z',
+      updatedAt: '2026-07-24T15:03:00Z',
+      canUnmerge: false,
+      actions: [
+        {
+          id: 'reconciliation-action-1',
+          actionType: 'CANDIDATE_FLAGGED',
+          fromTransactionId: null,
+          toTransactionId: null,
+          score: '0.8000',
+          reasons: [
+            'AMOUNT_CURRENCY_EXACT',
+            'TIME_CLOSE',
+            'MERCHANT_EXACT',
+            'SCORE_POSSIBLE_DUPLICATE',
+          ],
+          createdAt: '2026-07-24T15:03:00Z',
+        },
+      ],
+    },
+  ],
+  recentlyMergedReconciliationCases: [],
 } satisfies DashboardQueryData;
 
 export const emptyDashboardQueryData = {
@@ -181,6 +230,8 @@ export const emptyDashboardQueryData = {
   payables: [],
   recurringPayments: [],
   financialEventProposals: [],
+  reconciliationCases: [],
+  recentlyMergedReconciliationCases: [],
 } satisfies DashboardQueryData;
 
 export const dashboardSuccessMock = {

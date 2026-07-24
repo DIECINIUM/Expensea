@@ -81,7 +81,13 @@ function parseLabels(value: string): string[] {
     .slice(0, 11);
 }
 
-function reviewedMessage(action: 'approve' | 'reject'): string {
+function reviewedMessage(
+  action: 'approve' | 'reject',
+  status?: FinancialEventProposalData['status'],
+): string {
+  if (status === 'RECONCILIATION_REVIEW') {
+    return 'Proposal moved to duplicate review. Choose merge or keep separate.';
+  }
   return action === 'approve'
     ? 'Proposal approved and ledger data refreshed.'
     : 'Proposal rejected and removed from the review queue.';
@@ -264,6 +270,7 @@ export function FinancialNotesPanel({
   ) => {
     setReviewFeedback({ confirmation: null, error: null });
     setReviewing({ id: proposalId, action });
+    let confirmation = reviewedMessage(action);
     try {
       if (action === 'approve') {
         const response = await approveProposal({
@@ -282,6 +289,7 @@ export function FinancialNotesPanel({
           });
           return;
         }
+        confirmation = reviewedMessage(action, result.proposal.status);
       } else {
         const response = await rejectProposal({
           variables: { id: proposalId },
@@ -300,7 +308,7 @@ export function FinancialNotesPanel({
           return;
         }
       }
-      await refreshAfterMutation(reviewedMessage(action), setReviewFeedback);
+      await refreshAfterMutation(confirmation, setReviewFeedback);
     } catch {
       setReviewFeedback({
         confirmation: null,

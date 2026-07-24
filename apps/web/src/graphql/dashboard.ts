@@ -8,6 +8,10 @@ import {
   FINANCIAL_PROPOSAL_FIELDS,
   type FinancialEventProposalData,
 } from './financial-proposals';
+import {
+  RECONCILIATION_CASE_FIELDS,
+  type ReconciliationCaseData,
+} from './reconciliation';
 
 export const DASHBOARD_QUERY = gql`
   query PhaseOneDashboard {
@@ -116,8 +120,15 @@ export const DASHBOARD_QUERY = gql`
     financialEventProposals {
       ...FinancialProposalFields
     }
+    reconciliationCases {
+      ...ReconciliationCaseFields
+    }
+    recentlyMergedReconciliationCases: reconciliationCases(status: MERGED) {
+      ...ReconciliationCaseFields
+    }
   }
   ${FINANCIAL_PROPOSAL_FIELDS}
+  ${RECONCILIATION_CASE_FIELDS}
 `;
 
 export interface DashboardUserData {
@@ -246,4 +257,6 @@ export interface DashboardQueryData {
   readonly payables: readonly ObligationData[];
   readonly recurringPayments: readonly RecurringPaymentData[];
   readonly financialEventProposals: readonly FinancialEventProposalData[];
+  readonly reconciliationCases: readonly ReconciliationCaseData[];
+  readonly recentlyMergedReconciliationCases: readonly ReconciliationCaseData[];
 }
