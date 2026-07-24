@@ -209,7 +209,9 @@ tenant-isolated, tested, and visible in the dashboard.
 - [x] Compose configuration validates.
 - [x] A separate empty Compose volume migrates and seeds successfully; the second
   seed is a no-op.
-- [ ] The final pushed commit is green in every remote GitHub Actions job.
+- [x] Phase 1 implementation commit `15abd32` passed every job in GitHub Actions
+  run `30081162989`: backend, frontend, proxy smoke, container contracts, and secret
+  scan.
 
 ## Phase 2 — unified ingestion and provenance
 
