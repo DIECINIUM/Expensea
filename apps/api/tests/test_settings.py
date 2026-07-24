@@ -62,6 +62,8 @@ def test_ollama_settings_are_server_only_and_typed() -> None:
         ai_base_url="http://10.0.0.5:11434/",
         ai_model=" gemma4:e4b ",
         ai_request_timeout_seconds=90,
+        ai_max_attempts=3,
+        ai_retry_backoff_seconds=0.5,
         ai_review_confidence_threshold=0.9,
     )
 
@@ -69,6 +71,8 @@ def test_ollama_settings_are_server_only_and_typed() -> None:
     assert settings.ai_base_url == "http://10.0.0.5:11434"
     assert settings.ai_model == "gemma4:e4b"
     assert settings.ai_request_timeout_seconds == 90
+    assert settings.ai_max_attempts == 3
+    assert settings.ai_retry_backoff_seconds == 0.5
     assert settings.ai_review_confidence_threshold == 0.9
 
 

@@ -92,9 +92,19 @@ class OllamaChatProvider:
                 code="AI_PROVIDER_RESPONSE_TOO_LARGE",
                 message="The AI provider response exceeded the configured safety limit.",
             )
+        if response.status_code == 429:
+            raise AIProviderError(
+                code="AI_PROVIDER_RATE_LIMITED",
+                message="The AI provider temporarily rate-limited the request.",
+            )
+        if response.status_code >= 500:
+            raise AIProviderError(
+                code="AI_PROVIDER_UNAVAILABLE",
+                message="The AI provider is temporarily unavailable.",
+            )
         if response.is_error:
             raise AIProviderError(
-                code="AI_PROVIDER_HTTP_ERROR",
+                code="AI_PROVIDER_REJECTED",
                 message="The AI provider rejected the structured completion request.",
             )
 

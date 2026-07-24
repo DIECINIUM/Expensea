@@ -120,6 +120,7 @@ class ProposalRepository:
                 latency_ms=extraction.telemetry.latency_ms,
                 input_tokens=extraction.telemetry.input_tokens,
                 output_tokens=extraction.telemetry.output_tokens,
+                provider_attempt_count=extraction.telemetry.attempt_count,
             )
             .on_conflict_do_nothing(
                 constraint="uq_financial_event_proposals_raw_prompt",

@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     ai_base_url: str = "http://127.0.0.1:11434"
     ai_model: str = Field(default="gemma4:e4b", min_length=1, max_length=120)
     ai_request_timeout_seconds: float = Field(default=120.0, ge=1, le=300)
+    ai_max_attempts: int = Field(default=2, ge=1, le=4)
+    ai_retry_backoff_seconds: float = Field(default=0.25, ge=0, le=10)
     ai_max_input_chars: int = Field(default=8_000, ge=256, le=32_000)
     ai_review_confidence_threshold: float = Field(default=0.85, ge=0, le=1)
 

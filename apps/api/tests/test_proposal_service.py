@@ -114,6 +114,10 @@ async def test_manual_note_replay_persists_one_traceable_proposal(
         processing = await session.get(RawEventProcessing, first.raw_event_id)
     assert processing is not None
     assert processing.state is RawEventState.NEEDS_REVIEW
+    async with isolated_database.session_factory()() as session:
+        stored_proposal = await session.get(FinancialEventProposal, first.id)
+    assert stored_proposal is not None
+    assert stored_proposal.provider_attempt_count == 1
 
 
 @pytest.mark.database

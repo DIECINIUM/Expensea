@@ -25,6 +25,7 @@ class ProviderTelemetry:
     latency_ms: int
     input_tokens: int | None = None
     output_tokens: int | None = None
+    attempt_count: int = 1
 
 
 @dataclass(frozen=True, slots=True)

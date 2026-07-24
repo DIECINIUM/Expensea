@@ -214,3 +214,33 @@ async def test_ollama_adapter_maps_timeout_without_prompt_content() -> None:
 
     assert exc_info.value.code == "AI_PROVIDER_TIMEOUT"
     assert "Synthetic expense" not in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "expected_code"),
+    [
+        (429, "AI_PROVIDER_RATE_LIMITED"),
+        (503, "AI_PROVIDER_UNAVAILABLE"),
+        (400, "AI_PROVIDER_REJECTED"),
+    ],
+)
+async def test_ollama_adapter_classifies_retryable_http_failures(
+    status_code: int,
+    expected_code: str,
+) -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        del request
+        return httpx.Response(status_code, json={"error": "synthetic"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = OllamaChatProvider(
+            base_url="http://ollama.example.test",
+            model="gemma4:e4b",
+            timeout_seconds=1,
+            client=client,
+        )
+        with pytest.raises(AIProviderError) as exc_info:
+            await provider.complete(_request())
+
+    assert exc_info.value.code == expected_code

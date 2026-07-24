@@ -9,6 +9,7 @@ from app.ai.contracts import (
 )
 from app.ai.errors import AIProviderError
 from app.ai.ollama import OllamaChatProvider
+from app.ai.retrying import RetryingStructuredProvider
 from app.core.config import AIProvider, Settings
 
 
@@ -33,10 +34,14 @@ def create_structured_provider(
 ) -> StructuredCompletionProvider:
     """Return a lazy provider adapter from validated server-only settings."""
     if settings.ai_provider is AIProvider.OLLAMA:
-        return OllamaChatProvider(
-            base_url=settings.ai_base_url,
-            model=settings.ai_model,
-            timeout_seconds=settings.ai_request_timeout_seconds,
-            client=client,
+        return RetryingStructuredProvider(
+            OllamaChatProvider(
+                base_url=settings.ai_base_url,
+                model=settings.ai_model,
+                timeout_seconds=settings.ai_request_timeout_seconds,
+                client=client,
+            ),
+            max_attempts=settings.ai_max_attempts,
+            backoff_seconds=settings.ai_retry_backoff_seconds,
         )
     return DisabledStructuredProvider()

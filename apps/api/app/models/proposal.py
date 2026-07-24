@@ -114,6 +114,10 @@ class FinancialEventProposal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="output_tokens_non_negative",
         ),
         CheckConstraint(
+            "provider_attempt_count >= 1 AND provider_attempt_count <= 4",
+            name="provider_attempt_count_range",
+        ),
+        CheckConstraint(
             "num_nonnulls(transaction_id, receivable_id, payable_id, recurring_payment_id) <= 1",
             name="at_most_one_canonical_target",
         ),
@@ -211,6 +215,12 @@ class FinancialEventProposal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)
+    provider_attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+        server_default=text("1"),
+    )
     transaction_id: Mapped[UUID | None]
     receivable_id: Mapped[UUID | None]
     payable_id: Mapped[UUID | None]
