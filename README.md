@@ -6,8 +6,8 @@ SpendGraph AI is a deterministic personal-finance ledger built around one rule:
 
 ## Project status
 
-**Phases 1 and 2 are complete, and the review-first Phase 3 slice is
-implemented.** The repository now contains:
+**Phases 1–3 are implemented, and Phase 4 reconciliation is the active
+development phase.** The repository now contains:
 
 - exact-decimal transactions with merchants and categories;
 - per-currency monthly, category, and merchant summaries;
@@ -95,6 +95,8 @@ AI_PROVIDER=ollama
 AI_BASE_URL=http://your-ollama-compatible-host:11434
 AI_MODEL=gemma4:e4b
 AI_REQUEST_TIMEOUT_SECONDS=120
+AI_MAX_ATTEMPTS=2
+AI_RETRY_BACKOFF_SECONDS=0.25
 ```
 
 Use only the origin in `AI_BASE_URL`; the API appends `/api/chat`. If Ollama runs
@@ -103,6 +105,9 @@ directly on the same Mac while SpendGraph runs in Docker, use
 
 Never commit a private host, access token, or `.env`. AI configuration is
 server-only and is never exposed through a `VITE_*` browser variable.
+
+Only transient provider failures are retried. Attempts are capped at four by
+configuration; invalid output and client-side provider rejection fail immediately.
 
 After restarting `make dev`, use **AI inbox → Extract a quick note**. The dashboard
 will display the proposed kind, exact amount/currency, merchant or counterparty,
@@ -269,6 +274,7 @@ GraphiQL is available in validated debug environments at the GraphQL endpoint.
 | Run strict Python and TypeScript checks | `make typecheck` |
 | Build the web production bundle | `make build` |
 | Run dependency audits | `make audit` |
+| Evaluate AI extraction on labelled synthetic notes | `make eval-extraction` |
 | Run the aggregate local gate | `make check` |
 
 Local, non-container processes require Python 3.12+, Node.js 24+, and `make setup`.
@@ -331,8 +337,8 @@ the remote checks for a pushed commit.
 | 0 | Monorepo, health contracts, tooling, CI, PostgreSQL foundation | Complete |
 | 1 | Deterministic ledger, obligations, recurring payments, live dashboard | **Complete** |
 | 2 | Raw events, evidence, connector contract, replay-safe ingestion | **Complete** |
-| 3 | Structured natural-language extraction and review | In progress: end-to-end review slice implemented; evaluation pending |
-| 4 | Duplicate reconciliation | Planned |
+| 3 | Structured natural-language extraction and review | **Complete review-first slice with synthetic evaluation harness** |
+| 4 | Duplicate reconciliation | In development |
 | 5 | Personalized categorization and correction memory | Planned |
 | 6 | Extended deterministic analytics and grounded explanations | Planned |
 | 7 | Read-only finance agent over typed service tools | Planned |

@@ -1,11 +1,13 @@
 # AI design
 
-**Status: the Phase 3 review-first vertical slice is implemented; evaluation and the
-finance agent remain planned.** The backend has a provider-neutral structured
+**Status: the Phase 3 review-first vertical slice and its first labelled evaluation
+harness are implemented; calibration and the finance agent remain later work.** The
+backend has a provider-neutral structured
 completion port, deterministic mock, Ollama-compatible `/api/chat` adapter, versioned
 financial-note prompt/schema, bounded input/output handling, persisted proposal
-metadata, locked approve/reject transitions, and a React review inbox. The configured
-provider passes an opt-in synthetic contract test, but no quality benchmark is claimed.
+metadata, transient-only bounded retries, locked approve/reject transitions, and a
+React review inbox. The committed 24-case synthetic dataset is a regression benchmark,
+not evidence of production-level quality.
 
 ## Governing principle
 
@@ -101,6 +103,14 @@ Adapters translate this call to OpenAI, Gemini, Ollama, or another provider. The
 vendor request formatting, timeouts, safe retries, usage extraction, and error
 translation. They do not own business validation or persistence.
 
+The Ollama-compatible adapter is wrapped by a bounded retry policy. It retries only
+timeouts, transport unavailability, HTTP 429, and HTTP 5xx-class availability
+failures. Client rejection, malformed JSON, oversized responses, schema failures, and
+disabled providers fail immediately. `AI_MAX_ATTEMPTS` is limited to four and
+`AI_RETRY_BACKOFF_SECONDS` uses exponential delay between attempts. A timed-out model
+call may still finish remotely, but it cannot write money or call tools; proposal
+idempotency prevents successful replay from duplicating a canonical record.
+
 Provider selection is configuration. Provider-specific response objects do not cross
 the adapter boundary.
 
@@ -140,7 +150,8 @@ Each persisted proposal records:
 - generation timestamp; and
 - validation/review outcome;
 - provider latency; and
-- input/output token counts when the provider reports them.
+- input/output token counts when the provider reports them; and
+- successful provider attempt count.
 
 Prompts place system policy and untrusted content in separate fields. Delimiters help
 the model parse the request but are not treated as a security boundary. Untrusted
@@ -236,7 +247,7 @@ Persisted proposals currently record non-sensitive metadata for successful calls
 - request type and correlation ID;
 - provider, model, prompt/schema version;
 - latency and token counts;
-- success/failure, validation failure, and retry count; and
+- successful call and retry count; and
 - confidence and eventual review outcome.
 
 Estimated cost is not fabricated for the local provider; a priced provider adapter
@@ -244,9 +255,17 @@ must add an explicit versioned pricing basis. Do not log full private notes, ema
 bodies, access tokens, or arbitrary prompts.
 Sampled debugging requires explicit redaction and retention controls.
 
+Failed calls retain a content-safe error code on raw-event processing. A dedicated
+invocation table for failed-call latency/token details is deferred; proposal rows
+cannot represent calls that produced no proposal.
+
 ## Evaluation before rollout
 
 No benchmark number is valid without a committed dataset and executable evaluator.
+The first extraction harness lives under `evals/extraction/`. It scores exact event
+kind, decimal amount, currency, user-local date, recurrence, merchant/counterparty,
+category suggestion, and unsupported non-null facts. Reports contain case IDs and
+field names but never raw note text.
 
 | Capability | Primary measures | Safety emphasis |
 | --- | --- | --- |

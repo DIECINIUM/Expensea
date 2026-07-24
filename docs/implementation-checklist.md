@@ -2,8 +2,8 @@
 
 **Last updated:** 2026-07-24
 
-**Current phase:** Phases 1 and 2 complete; Phase 3 review-first vertical slice
-implemented, with quality evaluation and retry calibration still in progress.
+**Current phase:** Phases 1–3 are implemented through a review-first vertical slice
+and executable synthetic evaluation; Phase 4 reconciliation is the active phase.
 
 **Rule:** implement each phase through bounded vertical slices whose acceptance
 behavior is written before code and checked from actual commands.
@@ -246,8 +246,8 @@ canonical record with evidence, and replay does not duplicate it.
 - [x] Add provider-neutral structured-completion interface and mock adapter.
 - [x] Version extraction prompts outside business services.
 - [x] Add strict Pydantic extraction schema for supported event types.
-- [ ] Resolve relative dates from source timestamp and user timezone; trusted context
-  supply and naive-date rejection are implemented, broader evaluation remains pending.
+- [x] Resolve relative dates from source timestamp and user timezone through trusted
+  context, reject naive output, and include labelled timezone/DST evaluation slices.
 - [x] Add configurable review confidence policy; calibration remains pending.
 - [x] Add proposed-event persistence and locked approve/reject review queue.
 - [x] Add one Ollama-compatible provider adapter behind server-only configuration.
@@ -256,11 +256,13 @@ canonical record with evidence, and replay does not duplicate it.
 - [x] Add GraphQL note submission, Keep import, proposal query, and review mutations.
 - [x] Add a React AI inbox with tags, category hints, confidence/reasons, and
   canonical dashboard refresh after approval.
-- [x] Add prompt-injection separation, invalid-output, timeout, and provider-envelope
-  tests; bounded retry tests remain pending.
+- [x] Add prompt-injection separation, invalid-output, timeout, provider-envelope,
+  and bounded transient-only retry tests.
 - [x] Run the opt-in synthetic live contract against the configured
   Ollama-compatible model; this is compatibility evidence, not a quality benchmark.
-- [ ] Create labelled extraction evaluation dataset and evaluator.
+- [x] Create a 24-case labelled synthetic extraction dataset and executable,
+  content-free evaluator. This is a regression harness, not a production-quality
+  benchmark.
 
 Acceptance: “Lent Rahul ₹2,000 yesterday” creates a traceable proposal; missing facts
 remain unknown; uncertain results require confirmation.
