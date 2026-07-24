@@ -7,6 +7,7 @@ import strawberry
 from app.ai.proposal_dto import FinancialEventProposalView
 from app.domain.enums import (
     ProposalStatus,
+    ReconciliationStatus,
     RecurrenceRule,
     RecurringPaymentStatus,
 )
@@ -30,6 +31,11 @@ from app.graphql.types import (
     PageInfoType,
     PersonType,
     ProposalStatusValue,
+    ReconciliationActionType,
+    ReconciliationActionTypeValue,
+    ReconciliationCaseType,
+    ReconciliationDecisionValue,
+    ReconciliationStatusValue,
     RecordedRecurringPaymentType,
     RecurrenceRuleValue,
     RecurringPaymentStatusValue,
@@ -63,6 +69,7 @@ from app.ledger.recurring_dto import (
     RecordedRecurringPaymentView,
     RecurringPaymentView,
 )
+from app.reconciliation.dto import ReconciliationCaseView
 
 
 def money_string(value: Decimal) -> str:
@@ -252,6 +259,61 @@ def map_financial_event_proposal(
     )
 
 
+def map_reconciliation_case(value: ReconciliationCaseView) -> ReconciliationCaseType:
+    return ReconciliationCaseType(
+        id=strawberry.ID(str(value.id)),
+        normalized_event_id=strawberry.ID(str(value.normalized_event_id)),
+        source=ConnectorTypeValue[value.source.name],
+        event_kind=FinancialEventKindValue[value.event_kind.name],
+        amount=money_string(value.amount),
+        currency=value.currency,
+        description=value.description,
+        occurred_at=value.occurred_at,
+        merchant_name=value.merchant_name,
+        candidate_transaction_id=(
+            strawberry.ID(str(value.candidate_transaction_id))
+            if value.candidate_transaction_id is not None
+            else None
+        ),
+        candidate_description=value.candidate_description,
+        candidate_occurred_at=value.candidate_occurred_at,
+        candidate_merchant_name=value.candidate_merchant_name,
+        resulting_transaction_id=(
+            strawberry.ID(str(value.resulting_transaction_id))
+            if value.resulting_transaction_id is not None
+            else None
+        ),
+        initial_decision=ReconciliationDecisionValue[value.initial_decision.name],
+        status=ReconciliationStatusValue[value.status.name],
+        score=money_string(value.score),
+        score_version=value.score_version,
+        reasons=list(value.reasons),
+        created_at=value.created_at,
+        updated_at=value.updated_at,
+        can_unmerge=value.can_unmerge,
+        actions=[
+            ReconciliationActionType(
+                id=strawberry.ID(str(action.id)),
+                action_type=ReconciliationActionTypeValue[action.action_type.name],
+                from_transaction_id=(
+                    strawberry.ID(str(action.from_transaction_id))
+                    if action.from_transaction_id is not None
+                    else None
+                ),
+                to_transaction_id=(
+                    strawberry.ID(str(action.to_transaction_id))
+                    if action.to_transaction_id is not None
+                    else None
+                ),
+                score=money_string(action.score),
+                reasons=list(action.reasons),
+                created_at=action.created_at,
+            )
+            for action in value.actions
+        ],
+    )
+
+
 def to_domain_transaction_type(value: TransactionTypeValue) -> DomainTransactionType:
     return DomainTransactionType[value.name]
 
@@ -274,3 +336,9 @@ def to_domain_recurring_status(
 
 def to_domain_proposal_status(value: ProposalStatusValue) -> ProposalStatus:
     return ProposalStatus[value.name]
+
+
+def to_domain_reconciliation_status(
+    value: ReconciliationStatusValue,
+) -> ReconciliationStatus:
+    return ReconciliationStatus[value.name]

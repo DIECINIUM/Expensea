@@ -14,6 +14,7 @@ from app.graphql.mappers import (
     map_financial_event_proposal,
     map_obligation,
     map_person,
+    map_reconciliation_case,
     map_recorded_recurring_payment,
     map_recurring_payment,
     map_settlement,
@@ -55,6 +56,8 @@ from app.graphql.types import (
     RecurringPaymentStatusValue,
     ReviewFinancialProposalResult,
     ReviewFinancialProposalSuccess,
+    ReviewReconciliationCaseResult,
+    ReviewReconciliationCaseSuccess,
     SetRecurringPaymentStatusResult,
     SetRecurringPaymentStatusSuccess,
     SettlePayableInput,
@@ -84,6 +87,11 @@ from app.ledger.recurring_commands import (
     parse_create_recurring_payment,
     parse_record_recurring_payment,
     parse_recurring_status_transition,
+)
+from app.reconciliation.errors import (
+    ReconciliationConflictError,
+    ReconciliationError,
+    ReconciliationNotFoundError,
 )
 
 
@@ -235,6 +243,54 @@ class Mutation:
         except (AIError, IngestionError) as exc:
             return _proposal_problem(exc)
         return ReviewFinancialProposalSuccess(proposal=map_financial_event_proposal(proposal))
+
+    @strawberry.mutation
+    async def merge_reconciliation_case(
+        self,
+        info: Info[GraphQLContext, None],
+        id: strawberry.ID,
+    ) -> ReviewReconciliationCaseResult:
+        user_id = require_user_id(info.context)
+        try:
+            case_id = _parse_uuid(id, "id")
+            value = await info.context.reconciliation.merge(user_id, case_id)
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except ReconciliationError as exc:
+            return _reconciliation_problem(exc)
+        return ReviewReconciliationCaseSuccess(case=map_reconciliation_case(value))
+
+    @strawberry.mutation
+    async def keep_reconciliation_case_separate(
+        self,
+        info: Info[GraphQLContext, None],
+        id: strawberry.ID,
+    ) -> ReviewReconciliationCaseResult:
+        user_id = require_user_id(info.context)
+        try:
+            case_id = _parse_uuid(id, "id")
+            value = await info.context.reconciliation.keep_separate(user_id, case_id)
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except ReconciliationError as exc:
+            return _reconciliation_problem(exc)
+        return ReviewReconciliationCaseSuccess(case=map_reconciliation_case(value))
+
+    @strawberry.mutation
+    async def unmerge_reconciliation_case(
+        self,
+        info: Info[GraphQLContext, None],
+        id: strawberry.ID,
+    ) -> ReviewReconciliationCaseResult:
+        user_id = require_user_id(info.context)
+        try:
+            case_id = _parse_uuid(id, "id")
+            value = await info.context.reconciliation.unmerge(user_id, case_id)
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except ReconciliationError as exc:
+            return _reconciliation_problem(exc)
+        return ReviewReconciliationCaseSuccess(case=map_reconciliation_case(value))
 
     @strawberry.mutation
     async def create_category(
@@ -627,3 +683,18 @@ def _proposal_problem(
     }:
         return ConflictProblem(code=error.code, message=error.message, field=None)
     return ValidationProblem(code=error.code, message=error.message, field=None)
+
+
+def _reconciliation_problem(
+    error: ReconciliationError,
+) -> NotFoundProblem | ConflictProblem:
+    problem_type = (
+        NotFoundProblem if isinstance(error, ReconciliationNotFoundError) else ConflictProblem
+    )
+    if not isinstance(error, (ReconciliationNotFoundError, ReconciliationConflictError)):
+        problem_type = ConflictProblem
+    return problem_type(
+        code=error.code,
+        message=error.message,
+        field=error.field,
+    )

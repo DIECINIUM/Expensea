@@ -17,12 +17,14 @@ from app.graphql.mappers import (
     map_monthly_spending,
     map_obligation,
     map_person,
+    map_reconciliation_case,
     map_recurring_payment,
     map_summary,
     map_transaction,
     map_transaction_page,
     map_user,
     to_domain_proposal_status,
+    to_domain_reconciliation_status,
 )
 from app.graphql.safety import require_user_id, resolve_safely
 from app.graphql.types import (
@@ -36,6 +38,8 @@ from app.graphql.types import (
     ObligationType,
     PersonType,
     ProposalStatusValue,
+    ReconciliationCaseType,
+    ReconciliationStatusValue,
     RecurringPaymentType,
     RecurringSummaryType,
     TransactionConnectionType,
@@ -201,6 +205,20 @@ class Query:
             status=to_domain_proposal_status(status) if status is not None else None,
         )
         return [map_financial_event_proposal(value) for value in values]
+
+    @strawberry.field
+    async def reconciliation_cases(
+        self,
+        info: Info[GraphQLContext, None],
+        status: ReconciliationStatusValue | None = ReconciliationStatusValue.PENDING,
+    ) -> list[ReconciliationCaseType]:
+        """Return owner-scoped explainable duplicate decisions and audit history."""
+        user_id = require_user_id(info.context)
+        values = await info.context.reconciliation.list(
+            user_id,
+            status=to_domain_reconciliation_status(status) if status is not None else None,
+        )
+        return [map_reconciliation_case(value) for value in values]
 
     @strawberry.field
     async def recurring_payments(

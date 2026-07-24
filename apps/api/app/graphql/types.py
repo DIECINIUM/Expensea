@@ -70,8 +70,34 @@ class FinancialEventKindValue(Enum):
 @strawberry.enum
 class ProposalStatusValue(Enum):
     NEEDS_REVIEW = "NEEDS_REVIEW"
+    RECONCILIATION_REVIEW = "RECONCILIATION_REVIEW"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
+
+@strawberry.enum
+class ReconciliationDecisionValue(Enum):
+    MERGE = "MERGE"
+    POSSIBLE_DUPLICATE = "POSSIBLE_DUPLICATE"
+    NEW_TRANSACTION = "NEW_TRANSACTION"
+
+
+@strawberry.enum
+class ReconciliationStatusValue(Enum):
+    PENDING = "PENDING"
+    MERGED = "MERGED"
+    KEPT_SEPARATE = "KEPT_SEPARATE"
+    UNMERGED = "UNMERGED"
+
+
+@strawberry.enum
+class ReconciliationActionTypeValue(Enum):
+    CANDIDATE_FLAGGED = "CANDIDATE_FLAGGED"
+    AUTO_MERGED = "AUTO_MERGED"
+    CREATED_NEW = "CREATED_NEW"
+    USER_MERGED = "USER_MERGED"
+    USER_KEPT_SEPARATE = "USER_KEPT_SEPARATE"
+    USER_UNMERGED = "USER_UNMERGED"
 
 
 @strawberry.enum
@@ -260,6 +286,44 @@ class FinancialEventProposalType:
     canonical_target_id: strawberry.ID | None
 
 
+@strawberry.type
+class ReconciliationActionType:
+    id: strawberry.ID
+    action_type: ReconciliationActionTypeValue
+    from_transaction_id: strawberry.ID | None
+    to_transaction_id: strawberry.ID | None
+    score: str
+    reasons: list[str]
+    created_at: datetime
+
+
+@strawberry.type
+class ReconciliationCaseType:
+    id: strawberry.ID
+    normalized_event_id: strawberry.ID
+    source: ConnectorTypeValue
+    event_kind: FinancialEventKindValue
+    amount: str
+    currency: str
+    description: str
+    occurred_at: datetime
+    merchant_name: str | None
+    candidate_transaction_id: strawberry.ID | None
+    candidate_description: str | None
+    candidate_occurred_at: datetime | None
+    candidate_merchant_name: str | None
+    resulting_transaction_id: strawberry.ID | None
+    initial_decision: ReconciliationDecisionValue
+    status: ReconciliationStatusValue
+    score: str
+    score_version: str
+    reasons: list[str]
+    created_at: datetime
+    updated_at: datetime
+    can_unmerge: bool
+    actions: list[ReconciliationActionType]
+
+
 @strawberry.input
 class CreateTransactionInput:
     amount: str
@@ -421,6 +485,11 @@ class ReviewFinancialProposalSuccess:
     proposal: FinancialEventProposalType
 
 
+@strawberry.type
+class ReviewReconciliationCaseSuccess:
+    case: ReconciliationCaseType
+
+
 @strawberry.interface
 class ClientProblem:
     code: str
@@ -511,4 +580,9 @@ ImportGoogleKeepNoteResult = Annotated[
 ReviewFinancialProposalResult = Annotated[
     ReviewFinancialProposalSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
     strawberry.union("ReviewFinancialProposalResult"),
+]
+
+ReviewReconciliationCaseResult = Annotated[
+    ReviewReconciliationCaseSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
+    strawberry.union("ReviewReconciliationCaseResult"),
 ]
