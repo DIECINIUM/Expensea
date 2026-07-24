@@ -63,6 +63,15 @@ describe('DashboardPage', () => {
     expect(
       screen.getByRole('heading', { name: /recurring payments/i }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /financial notes inbox/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('list', { name: /financial proposals/i }),
+    ).toHaveTextContent('Music subscription');
+    expect(
+      screen.getByRole('button', { name: /approve music subscription/i }),
+    ).toBeEnabled();
     expect(screen.queryByText(/synthetic/i)).not.toBeInTheDocument();
   });
 

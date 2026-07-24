@@ -117,6 +117,35 @@ export const dashboardQueryData = {
       status: 'ACTIVE',
     },
   ],
+  financialEventProposals: [
+    {
+      __typename: 'FinancialEventProposalType',
+      id: 'proposal-1',
+      rawEventId: 'raw-event-1',
+      source: 'MANUAL_NOTE',
+      eventKind: 'EXPENSE',
+      amount: '249.0000',
+      currency: 'INR',
+      description: 'Music subscription',
+      occurredAt: '2026-07-24T10:00:00+05:30',
+      dueDate: null,
+      merchantName: 'Example Music',
+      counterparty: null,
+      recurrenceRule: null,
+      nextExpectedDate: null,
+      categoryHint: 'Entertainment',
+      tags: ['subscription', 'music'],
+      confidence: '0.9300',
+      status: 'NEEDS_REVIEW',
+      reviewReasons: ['AI_REVIEW_REQUIRED'],
+      provider: 'ollama',
+      model: 'gemma4:e4b',
+      promptVersion: '1',
+      createdAt: '2026-07-24T10:01:00Z',
+      canonicalTargetType: null,
+      canonicalTargetId: null,
+    },
+  ],
 } satisfies DashboardQueryData;
 
 export const emptyDashboardQueryData = {
@@ -151,6 +180,7 @@ export const emptyDashboardQueryData = {
   receivables: [],
   payables: [],
   recurringPayments: [],
+  financialEventProposals: [],
 } satisfies DashboardQueryData;
 
 export const dashboardSuccessMock = {

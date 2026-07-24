@@ -4,6 +4,10 @@ import type {
   DashboardTransactionStatus,
   DashboardTransactionType,
 } from '../components/dashboard/types';
+import {
+  FINANCIAL_PROPOSAL_FIELDS,
+  type FinancialEventProposalData,
+} from './financial-proposals';
 
 export const DASHBOARD_QUERY = gql`
   query PhaseOneDashboard {
@@ -109,7 +113,11 @@ export const DASHBOARD_QUERY = gql`
       nextExpectedDate
       status
     }
+    financialEventProposals {
+      ...FinancialProposalFields
+    }
   }
+  ${FINANCIAL_PROPOSAL_FIELDS}
 `;
 
 export interface DashboardUserData {
@@ -237,4 +245,5 @@ export interface DashboardQueryData {
   readonly receivables: readonly ObligationData[];
   readonly payables: readonly ObligationData[];
   readonly recurringPayments: readonly RecurringPaymentData[];
+  readonly financialEventProposals: readonly FinancialEventProposalData[];
 }

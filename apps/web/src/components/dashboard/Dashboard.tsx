@@ -2,6 +2,7 @@ import { Plus, ReceiptText } from 'lucide-react';
 
 import { CategoryBreakdown } from './CategoryBreakdown';
 import { Card } from './Card';
+import { FinancialNotesPanel } from './FinancialNotesPanel';
 import { ManualTransactionForm } from './ManualTransactionForm';
 import { ObligationsPanel } from './ObligationsPanel';
 import { PeoplePanel } from './PeoplePanel';
@@ -16,6 +17,7 @@ import type {
   PersonData,
   RecurringPaymentData,
 } from '../../graphql/dashboard';
+import type { FinancialEventProposalData } from '../../graphql/financial-proposals';
 
 interface DashboardProps {
   readonly categories: readonly DashboardCategoryData[];
@@ -26,6 +28,7 @@ interface DashboardProps {
   readonly receivables: readonly ObligationData[];
   readonly payables: readonly ObligationData[];
   readonly recurringPayments: readonly RecurringPaymentData[];
+  readonly financialEventProposals: readonly FinancialEventProposalData[];
   readonly onDataChanged: () => Promise<void>;
   readonly refreshWarning: string | null;
 }
@@ -39,6 +42,7 @@ export function Dashboard({
   receivables,
   payables,
   recurringPayments,
+  financialEventProposals,
   onDataChanged,
   refreshWarning,
 }: DashboardProps) {
@@ -146,6 +150,13 @@ export function Dashboard({
           </>
         )}
 
+        <section id="intelligence" className="mt-8 scroll-mt-24">
+          <FinancialNotesPanel
+            proposals={financialEventProposals}
+            onChanged={onDataChanged}
+          />
+        </section>
+
         <section
           id="management"
           className="mt-8 scroll-mt-24"
@@ -153,7 +164,7 @@ export function Dashboard({
         >
           <div className="mb-4">
             <p className="text-leaf-700 text-xs font-semibold tracking-[0.12em] uppercase">
-              Phase 1 controls
+              Ledger controls
             </p>
             <h2
               id="management-heading"

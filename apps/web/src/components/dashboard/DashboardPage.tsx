@@ -88,7 +88,7 @@ function mapDashboardData(data: DashboardQueryData): DashboardPresentationData {
       transactions: transactionNodes,
     },
     footerNote:
-      'Financial values come from deterministic Phase 1 ledger services.',
+      'Ledger values stay deterministic; AI-derived records appear only after explicit approval.',
   };
 }
 
@@ -210,6 +210,7 @@ export function DashboardPage() {
       receivables={data.receivables}
       payables={data.payables}
       recurringPayments={data.recurringPayments}
+      financialEventProposals={data.financialEventProposals}
       onDataChanged={async () => {
         const result = await refetch();
         if (result.error) {
