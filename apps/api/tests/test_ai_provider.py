@@ -68,6 +68,109 @@ async def test_ollama_adapter_sends_schema_and_discards_reasoning_trace() -> Non
 
 
 @pytest.mark.asyncio
+async def test_ollama_adapter_anchors_nested_schema_patterns() -> None:
+    captured: dict[str, object] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "message": {
+                    "role": "assistant",
+                    "content": '{"amount":"249.0000"}',
+                },
+            },
+        )
+
+    request = _request()
+    request = StructuredCompletionRequest(
+        system_prompt=request.system_prompt,
+        user_prompt=request.user_prompt,
+        response_schema={
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "anyOf": [
+                        {"type": "string", "pattern": r"^\d+(?:\.\d{1,4})?"},
+                        {"type": "null"},
+                    ]
+                }
+            },
+        },
+        prompt_name=request.prompt_name,
+        prompt_version=request.prompt_version,
+        schema_version=request.schema_version,
+    )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = OllamaChatProvider(
+            base_url="http://ollama.example.test",
+            model="gemma4:e4b",
+            timeout_seconds=10,
+            client=client,
+        )
+        await provider.complete(request)
+
+    schema = captured["format"]
+    assert isinstance(schema, dict)
+    properties = schema["properties"]
+    assert isinstance(properties, dict)
+    amount = properties["amount"]
+    assert isinstance(amount, dict)
+    variants = amount["anyOf"]
+    assert isinstance(variants, list)
+    assert variants[0]["pattern"] == r"^\d+(?:\.\d{1,4})?$"
+
+
+@pytest.mark.asyncio
+async def test_ollama_adapter_replaces_unsupported_lookaround_patterns() -> None:
+    captured: dict[str, object] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={"message": {"role": "assistant", "content": '{"amount":"249"}'}},
+        )
+
+    request = _request()
+    request = StructuredCompletionRequest(
+        system_prompt=request.system_prompt,
+        user_prompt=request.user_prompt,
+        response_schema={
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string",
+                    "pattern": r"^(?![-+.]*$)\d+(?=\.\d{1,4}$)",
+                }
+            },
+        },
+        prompt_name=request.prompt_name,
+        prompt_version=request.prompt_version,
+        schema_version=request.schema_version,
+    )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = OllamaChatProvider(
+            base_url="http://ollama.example.test",
+            model="gemma4:e4b",
+            timeout_seconds=10,
+            client=client,
+        )
+        await provider.complete(request)
+
+    schema = captured["format"]
+    assert isinstance(schema, dict)
+    properties = schema["properties"]
+    assert isinstance(properties, dict)
+    amount = properties["amount"]
+    assert isinstance(amount, dict)
+    assert amount["pattern"] == r"^-?[0-9]+(\.[0-9]+)?$"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "response",
     [

@@ -17,6 +17,7 @@ from app.ai.contracts import (
 from app.ai.errors import AIProviderError
 
 MAX_PROVIDER_RESPONSE_BYTES = 1_048_576
+_PORTABLE_DECIMAL_PATTERN = r"^-?[0-9]+(\.[0-9]+)?$"
 
 
 class _OllamaMessage(BaseModel):
@@ -67,7 +68,7 @@ class OllamaChatProvider:
                 {"role": "system", "content": request.system_prompt},
                 {"role": "user", "content": request.user_prompt},
             ],
-            "format": request.response_schema,
+            "format": _provider_compatible_schema(request.response_schema),
             "options": {
                 "temperature": 0,
                 "num_predict": 1024,
@@ -135,3 +136,26 @@ class OllamaChatProvider:
                 json=body,
                 timeout=self._timeout,
             )
+
+
+def _provider_compatible_schema(value: Any) -> Any:
+    """Anchor JSON Schema regexes for strict Ollama-compatible backends."""
+    if isinstance(value, dict):
+        compatible: dict[str, Any] = {}
+        for key, item in value.items():
+            if key == "pattern" and isinstance(item, str):
+                # Ollama grammar backends do not consistently support the
+                # lookarounds emitted for Pydantic Decimal fields. Preserve a
+                # portable decimal-only hint; final Pydantic bounds and precision
+                # validation remain authoritative.
+                if "(?=" in item or "(?!" in item or "(?<" in item:
+                    compatible[key] = _PORTABLE_DECIMAL_PATTERN
+                    continue
+                pattern = item if item.startswith("^") else f"^(?:{item})"
+                compatible[key] = pattern if pattern.endswith("$") else f"{pattern}$"
+            else:
+                compatible[key] = _provider_compatible_schema(item)
+        return compatible
+    if isinstance(value, list):
+        return [_provider_compatible_schema(item) for item in value]
+    return value
