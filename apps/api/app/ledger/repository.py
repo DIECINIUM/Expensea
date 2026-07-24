@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from decimal import Decimal
+from typing import cast as typing_cast
 from uuid import UUID
 
 from sqlalchemy import Date, and_, case, cast, func, or_, select
@@ -71,6 +72,23 @@ class LedgerRepository:
         )
         return await self._session.scalar(statement) is not None
 
+    async def find_visible_category_id(
+        self,
+        user_id: UUID,
+        normalized_name: str,
+    ) -> UUID | None:
+        """Resolve a normalized system/private category without crossing owners."""
+        statement = (
+            select(Category.id)
+            .where(
+                Category.normalized_name == normalized_name,
+                or_(Category.user_id.is_(None), Category.user_id == user_id),
+            )
+            .order_by(Category.user_id.asc().nullsfirst())
+            .limit(1)
+        )
+        return typing_cast(UUID | None, await self._session.scalar(statement))
+
     async def create_category(
         self,
         user_id: UUID,
@@ -104,6 +122,8 @@ class LedgerRepository:
             status=command.status,
             category_id=command.category_id,
             merchant_id=merchant_id,
+            source=command.source,
+            confidence=command.confidence,
         )
         self._session.add(transaction)
         await self._session.flush()

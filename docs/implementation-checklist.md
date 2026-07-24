@@ -220,12 +220,12 @@ tenant-isolated, tested, and visible in the dashboard.
 - [x] Add `SourceConnection`, immutable-source-field `RawEvent`, separate processing
   state, and owner-safe `Evidence`.
 - [x] Define a persisted, versioned normalized financial-event contract.
-- [ ] Define connector fetch/normalize/health interface.
+- [x] Define connector fetch/normalize/health interface and explicit registry.
 - [ ] Implement manual, CSV, and mock receipt connectors only.
-- [ ] Enforce external identity/content-hash idempotency with unique constraints.
-- [ ] Add explicit processing-state transitions and retry semantics.
-- [ ] Persist provenance through canonical ledger handoff.
-- [ ] Test duplicate delivery, concurrent ingestion, failure resume, and ownership.
+- [x] Enforce external identity/content-hash idempotency with unique constraints.
+- [x] Add explicit processing-state transitions and retry semantics.
+- [x] Persist provenance through one atomic canonical-ledger handoff.
+- [x] Test duplicate delivery, concurrent ingestion, failure resume, and ownership.
 
 Acceptance: one mock event flows through raw storage and normalization to one
 canonical record with evidence, and replay does not duplicate it.

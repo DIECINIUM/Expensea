@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from app.domain.enums import TransactionStatus, TransactionType
+from app.domain.enums import TransactionSource, TransactionStatus, TransactionType
 from app.domain.money import normalize_currency_code, validate_positive_money
 from app.domain.normalization import normalize_display_text
 from app.ledger.errors import LedgerValidationError
@@ -31,7 +31,7 @@ SUPPORTED_CURRENCIES = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class CreateTransactionCommand:
-    """Normalized values for one manual ledger transaction."""
+    """Normalized values for one deterministic ledger transaction."""
 
     amount: Decimal
     currency: str
@@ -42,6 +42,8 @@ class CreateTransactionCommand:
     category_id: UUID | None
     merchant_name: str | None
     merchant_normalized_name: str | None
+    source: TransactionSource
+    confidence: Decimal | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,6 +65,8 @@ def parse_create_transaction(
     status: TransactionStatus = TransactionStatus.POSTED,
     category_id: UUID | None = None,
     merchant_name: str | None = None,
+    source: TransactionSource = TransactionSource.MANUAL,
+    confidence: Decimal | None = None,
 ) -> CreateTransactionCommand:
     """Validate an untrusted GraphQL command without lossy coercion."""
     parsed_amount = _parse_amount(amount)
@@ -87,6 +91,7 @@ def parse_create_transaction(
             field="transactionDate",
         )
     parsed_merchant_name, parsed_merchant_lookup = _parse_optional_merchant_name(merchant_name)
+    parsed_confidence = _parse_optional_confidence(confidence)
 
     return CreateTransactionCommand(
         amount=parsed_amount,
@@ -98,6 +103,8 @@ def parse_create_transaction(
         category_id=category_id,
         merchant_name=parsed_merchant_name,
         merchant_normalized_name=parsed_merchant_lookup,
+        source=source,
+        confidence=parsed_confidence,
     )
 
 
@@ -187,3 +194,15 @@ def _parse_optional_merchant_name(value: str | None) -> tuple[str | None, str | 
             field="merchantName",
         )
     return display_name, display_name.casefold()
+
+
+def _parse_optional_confidence(value: Decimal | None) -> Decimal | None:
+    if value is None:
+        return None
+    if not value.is_finite() or value < 0 or value > 1:
+        raise LedgerValidationError(
+            code="INVALID_CONFIDENCE",
+            message="Confidence must be between zero and one.",
+            field="confidence",
+        )
+    return value.quantize(Decimal("0.0001"))
