@@ -8,8 +8,8 @@ import pytest
 
 from app.db.session import Database
 from app.domain.enums import TransactionStatus, TransactionType
-from app.ledger.commands import parse_create_transaction
-from app.ledger.errors import LedgerNotFoundError
+from app.ledger.commands import parse_create_category, parse_create_transaction
+from app.ledger.errors import LedgerConflictError, LedgerNotFoundError
 from app.ledger.service import LedgerService
 from app.models import Category, LedgerTransaction, User
 
@@ -72,6 +72,7 @@ async def test_manual_create_round_trips_decimal_and_enforces_category_scope(
         description="  Team lunch ",
         transaction_date=datetime(2026, 7, 24, 8, 30, tzinfo=UTC),
         category_id=FOOD_CATEGORY_ID,
+        merchant_name="  Corner   Cafe ",
     )
 
     created = await service.create_transaction(OWNER_ID, command)
@@ -79,6 +80,7 @@ async def test_manual_create_round_trips_decimal_and_enforces_category_scope(
     assert created.amount == Decimal("123456789.1234")
     assert created.description == "Team lunch"
     assert created.category_name == "Food"
+    assert created.merchant_name == "Corner Cafe"
     assert (await service.get_transaction(OWNER_ID, created.id)) == created
 
     with pytest.raises(LedgerNotFoundError) as hidden:
@@ -99,6 +101,46 @@ async def test_manual_create_round_trips_decimal_and_enforces_category_scope(
 
     page = await service.list_transactions(OWNER_ID)
     assert [edge.node.id for edge in page.edges] == [created.id]
+
+    second = await service.create_transaction(
+        OWNER_ID,
+        parse_create_transaction(
+            amount="0.8766",
+            currency="INR",
+            transaction_type=TransactionType.EXPENSE,
+            description="Tip",
+            transaction_date=datetime(2026, 7, 24, 8, 31, tzinfo=UTC),
+            merchant_name="corner cafe",
+        ),
+    )
+    assert second.merchant_name == "Corner Cafe"
+    merchant_totals = await service.spending_by_merchant(OWNER_ID)
+    assert [
+        (item.merchant_name, item.amount, item.share_percentage) for item in merchant_totals
+    ] == [("Corner Cafe", Decimal("123456790.0000"), 100)]
+
+
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_private_category_creation_rejects_visible_duplicate(
+    isolated_database: Database,
+) -> None:
+    await _seed_owners(isolated_database)
+    service = LedgerService(isolated_database, clock=lambda: NOW)
+
+    created = await service.create_category(
+        OWNER_ID,
+        parse_create_category(name="Client travel", parent_category_id=FOOD_CATEGORY_ID),
+    )
+
+    assert created.name == "Client travel"
+    assert created in await service.list_categories(OWNER_ID)
+    with pytest.raises(LedgerConflictError) as duplicate:
+        await service.create_category(
+            OWNER_ID,
+            parse_create_category(name=" client   travel "),
+        )
+    assert duplicate.value.code == "CATEGORY_ALREADY_EXISTS"
 
 
 @pytest.mark.database

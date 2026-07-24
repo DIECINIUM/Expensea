@@ -8,18 +8,23 @@ from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from app.db.session import Database
-from app.ledger.commands import CreateTransactionCommand, parse_currency
+from app.ledger.commands import (
+    CreateCategoryCommand,
+    CreateTransactionCommand,
+    parse_currency,
+)
 from app.ledger.dto import (
     CategorySpending,
     CategoryView,
     FinancialSummary,
+    MerchantSpending,
     MonthlySpending,
     TransactionEdge,
     TransactionPage,
     TransactionView,
     UserView,
 )
-from app.ledger.errors import LedgerNotFoundError
+from app.ledger.errors import LedgerConflictError, LedgerNotFoundError
 from app.ledger.pagination import (
     DEFAULT_PAGE_SIZE,
     TransactionCursor,
@@ -57,6 +62,34 @@ class LedgerService:
             repository = LedgerRepository(session)
             self._require_user(await repository.get_user(user_id))
             return await repository.list_categories(user_id)
+
+    async def create_category(
+        self,
+        user_id: UUID,
+        command: CreateCategoryCommand,
+    ) -> CategoryView:
+        """Create an owner-local category with a visible optional parent."""
+        async with self._database.session_factory()() as session, session.begin():
+            repository = LedgerRepository(session)
+            self._require_user(await repository.get_user(user_id))
+            if command.parent_category_id is not None and not await repository.category_is_visible(
+                user_id, command.parent_category_id
+            ):
+                raise LedgerNotFoundError(
+                    code="CATEGORY_NOT_FOUND",
+                    message="The parent category was not found.",
+                    field="parentCategoryId",
+                )
+            if await repository.category_name_is_visible(
+                user_id,
+                command.normalized_name,
+            ):
+                raise LedgerConflictError(
+                    code="CATEGORY_ALREADY_EXISTS",
+                    message="A category with that name already exists.",
+                    field="name",
+                )
+            return await repository.create_category(user_id, command)
 
     async def create_transaction(
         self,
@@ -193,6 +226,38 @@ class LedgerService:
                 share_percentage=self._percentage(amount, denominator),
             )
             for category_id, category_name, amount in totals
+        )
+
+    async def spending_by_merchant(
+        self,
+        user_id: UUID,
+        *,
+        currency: str | None = None,
+        month: YearMonth | None = None,
+    ) -> tuple[MerchantSpending, ...]:
+        """Calculate merchant contributions using signed spending semantics."""
+        async with self._database.session_factory()() as session:
+            repository = LedgerRepository(session)
+            user = self._require_user(await repository.get_user(user_id))
+            selected_currency = parse_currency(currency or user.default_currency)
+            selected_month = month or YearMonth.containing(self._now(), user.timezone)
+            period = month_period(selected_month, user.timezone)
+            totals = await repository.merchant_totals(
+                user_id,
+                currency=selected_currency,
+                period=period,
+            )
+
+        denominator = sum((amount for _, _, amount in totals), start=_ZERO)
+        return tuple(
+            MerchantSpending(
+                merchant_id=merchant_id,
+                merchant_name=merchant_name,
+                amount=amount,
+                currency=selected_currency,
+                share_percentage=self._percentage(amount, denominator),
+            )
+            for merchant_id, merchant_name, amount in totals
         )
 
     async def monthly_spending(

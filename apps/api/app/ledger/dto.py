@@ -27,6 +27,17 @@ class CategoryView:
 
 
 @dataclass(frozen=True, slots=True)
+class MerchantSpending:
+    """Signed spending contribution for one merchant."""
+
+    merchant_id: UUID | None
+    merchant_name: str
+    amount: Decimal
+    currency: str
+    share_percentage: int
+
+
+@dataclass(frozen=True, slots=True)
 class TransactionView:
     """A tenant-safe transaction projection."""
 

@@ -14,6 +14,7 @@ from app.graphql.types import (
     CategorySpendingType,
     CategoryType,
     FinancialSummaryType,
+    MerchantSpendingType,
     MonthlySpendingType,
     PageInfoType,
     TransactionConnectionType,
@@ -29,6 +30,7 @@ from app.ledger.dto import (
     CategorySpending,
     CategoryView,
     FinancialSummary,
+    MerchantSpending,
     MonthlySpending,
     TransactionPage,
     TransactionView,
@@ -98,6 +100,18 @@ def map_category_spending(value: CategorySpending) -> CategorySpendingType:
             strawberry.ID(str(value.category_id)) if value.category_id is not None else None
         ),
         category_name=value.category_name,
+        amount=money_string(value.amount),
+        currency=value.currency,
+        share_percentage=value.share_percentage,
+    )
+
+
+def map_merchant_spending(value: MerchantSpending) -> MerchantSpendingType:
+    return MerchantSpendingType(
+        merchant_id=(
+            strawberry.ID(str(value.merchant_id)) if value.merchant_id is not None else None
+        ),
+        merchant_name=value.merchant_name,
         amount=money_string(value.amount),
         currency=value.currency,
         share_percentage=value.share_percentage,

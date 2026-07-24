@@ -7,7 +7,11 @@ from uuid import UUID
 import pytest
 
 from app.domain.enums import TransactionStatus, TransactionType
-from app.ledger.commands import parse_create_transaction, parse_currency
+from app.ledger.commands import (
+    parse_create_category,
+    parse_create_transaction,
+    parse_currency,
+)
 from app.ledger.errors import LedgerValidationError
 
 
@@ -88,3 +92,20 @@ def test_currency_support_is_explicit() -> None:
     with pytest.raises(LedgerValidationError) as exc_info:
         parse_currency("ZZZ")
     assert exc_info.value.code == "UNSUPPORTED_CURRENCY"
+
+
+def test_category_and_merchant_names_are_normalized_at_the_boundary() -> None:
+    category = parse_create_category(name="  Work   Travel ")
+    transaction = parse_create_transaction(
+        amount="10.00",
+        currency="INR",
+        transaction_type=TransactionType.EXPENSE,
+        description="Train",
+        transaction_date=datetime(2026, 7, 24, 12, 0, tzinfo=UTC),
+        merchant_name="  Rail   Desk ",
+    )
+
+    assert category.name == "Work Travel"
+    assert category.normalized_name == "work travel"
+    assert transaction.merchant_name == "Rail Desk"
+    assert transaction.merchant_normalized_name == "rail desk"

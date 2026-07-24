@@ -10,6 +10,7 @@ from app.graphql.context import GraphQLContext
 from app.graphql.mappers import (
     map_category,
     map_category_spending,
+    map_merchant_spending,
     map_monthly_spending,
     map_summary,
     map_transaction,
@@ -21,6 +22,7 @@ from app.graphql.types import (
     CategorySpendingType,
     CategoryType,
     FinancialSummaryType,
+    MerchantSpendingType,
     MonthlySpendingType,
     TransactionConnectionType,
     TransactionType,
@@ -105,6 +107,19 @@ class Query:
             info.context,
         )
         return [map_monthly_spending(value) for value in values]
+
+    @strawberry.field
+    async def spending_by_merchant(
+        self,
+        info: Info[GraphQLContext, None],
+        currency: str | None = None,
+    ) -> list[MerchantSpendingType]:
+        user_id = require_user_id(info.context)
+        values = await resolve_safely(
+            info.context.ledger.spending_by_merchant(user_id, currency=currency),
+            info.context,
+        )
+        return [map_merchant_spending(value) for value in values]
 
     @strawberry.field
     async def transactions(

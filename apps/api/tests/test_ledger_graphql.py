@@ -94,6 +94,25 @@ CREATE_TRANSACTION_MUTATION = """
     }
 """
 
+CREATE_CATEGORY_MUTATION = """
+    mutation CreateCategory($input: CreateCategoryInput!) {
+      createCategory(input: $input) {
+        __typename
+        ... on CreateCategorySuccess {
+          category {
+            id
+            name
+          }
+        }
+        ... on ClientProblem {
+          code
+          message
+          field
+        }
+      }
+    }
+"""
+
 
 async def _seed_graphql_owner(database: Database) -> None:
     async with database.session_factory()() as session, session.begin():
@@ -214,6 +233,42 @@ async def test_create_transaction_returns_typed_validation_problem(
         "code": "INVALID_AMOUNT",
         "message": "Amount must be positive, finite, and have at most four decimal places.",
         "field": "amount",
+    }
+
+
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_create_category_returns_success_then_typed_conflict(
+    isolated_database: Database,
+    database_api_app: FastAPI,
+) -> None:
+    await _seed_graphql_owner(isolated_database)
+    transport = ASGITransport(app=database_api_app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        created = await client.post(
+            "/graphql",
+            json={
+                "query": CREATE_CATEGORY_MUTATION,
+                "variables": {"input": {"name": "Work travel"}},
+            },
+        )
+        duplicate = await client.post(
+            "/graphql",
+            json={
+                "query": CREATE_CATEGORY_MUTATION,
+                "variables": {"input": {"name": " work   travel "}},
+            },
+        )
+
+    created_result = created.json()["data"]["createCategory"]
+    assert created_result["__typename"] == "CreateCategorySuccess"
+    assert created_result["category"]["name"] == "Work travel"
+    assert duplicate.json()["data"]["createCategory"] == {
+        "__typename": "ConflictProblem",
+        "code": "CATEGORY_ALREADY_EXISTS",
+        "message": "A category with that name already exists.",
+        "field": "name",
     }
 
 

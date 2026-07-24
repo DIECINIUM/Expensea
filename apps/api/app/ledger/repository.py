@@ -5,10 +5,11 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import Date, and_, case, cast, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.enums import TransactionStatus, TransactionType
-from app.ledger.commands import CreateTransactionCommand
+from app.ledger.commands import CreateCategoryCommand, CreateTransactionCommand
 from app.ledger.dto import CategoryView, TransactionView, UserView
 from app.ledger.pagination import TransactionCursor
 from app.ledger.periods import MonthPeriod
@@ -58,12 +59,41 @@ class LedgerRepository:
         )
         return await self._session.scalar(statement) is not None
 
+    async def category_name_is_visible(
+        self,
+        user_id: UUID,
+        normalized_name: str,
+    ) -> bool:
+        """Check for a system or private category with the same lookup key."""
+        statement = select(Category.id).where(
+            Category.normalized_name == normalized_name,
+            or_(Category.user_id.is_(None), Category.user_id == user_id),
+        )
+        return await self._session.scalar(statement) is not None
+
+    async def create_category(
+        self,
+        user_id: UUID,
+        command: CreateCategoryCommand,
+    ) -> CategoryView:
+        """Insert an owner-local category."""
+        category = Category(
+            user_id=user_id,
+            name=command.name,
+            normalized_name=command.normalized_name,
+            parent_category_id=command.parent_category_id,
+        )
+        self._session.add(category)
+        await self._session.flush()
+        return CategoryView(id=category.id, name=category.name)
+
     async def create_transaction(
         self,
         user_id: UUID,
         command: CreateTransactionCommand,
     ) -> TransactionView:
         """Insert one already-validated manual transaction."""
+        merchant_id = await self._get_or_create_merchant(command)
         transaction = LedgerTransaction(
             user_id=user_id,
             amount=command.amount,
@@ -73,6 +103,7 @@ class LedgerRepository:
             transaction_date=command.transaction_date,
             status=command.status,
             category_id=command.category_id,
+            merchant_id=merchant_id,
         )
         self._session.add(transaction)
         await self._session.flush()
@@ -118,6 +149,47 @@ class LedgerRepository:
         return tuple(
             self._transaction_view(transaction, merchant_name, category_name)
             for transaction, merchant_name, category_name in rows
+        )
+
+    async def merchant_totals(
+        self,
+        user_id: UUID,
+        *,
+        currency: str,
+        period: MonthPeriod,
+    ) -> tuple[tuple[UUID | None, str, Decimal], ...]:
+        """Aggregate signed spending by canonical merchant."""
+        spending_expression = case(
+            (
+                LedgerTransaction.transaction_type.in_(
+                    (TransactionType.EXPENSE, TransactionType.SHARED_EXPENSE)
+                ),
+                LedgerTransaction.amount,
+            ),
+            else_=-LedgerTransaction.amount,
+        )
+        statement = (
+            select(
+                LedgerTransaction.merchant_id,
+                func.coalesce(Merchant.display_name, "No merchant"),
+                func.sum(spending_expression),
+            )
+            .outerjoin(Merchant, Merchant.id == LedgerTransaction.merchant_id)
+            .where(
+                LedgerTransaction.user_id == user_id,
+                LedgerTransaction.currency == currency,
+                LedgerTransaction.status == TransactionStatus.POSTED,
+                LedgerTransaction.transaction_type.in_(_SPENDING_TYPES),
+                LedgerTransaction.transaction_date >= period.start_utc,
+                LedgerTransaction.transaction_date < period.end_utc,
+            )
+            .group_by(LedgerTransaction.merchant_id, Merchant.display_name)
+            .order_by(func.sum(spending_expression).desc(), Merchant.display_name.asc())
+        )
+        rows = (await self._session.execute(statement)).all()
+        return tuple(
+            (merchant_id, merchant_name, Decimal(amount))
+            for merchant_id, merchant_name, amount in rows
         )
 
     async def financial_totals(
@@ -255,6 +327,26 @@ class LedgerRepository:
             msg = "Inserted transaction was not visible in its owner scope"
             raise RuntimeError(msg)
         return transaction
+
+    async def _get_or_create_merchant(
+        self,
+        command: CreateTransactionCommand,
+    ) -> UUID | None:
+        if command.merchant_name is None or command.merchant_normalized_name is None:
+            return None
+        statement = (
+            pg_insert(Merchant)
+            .values(
+                display_name=command.merchant_name,
+                normalized_name=command.merchant_normalized_name,
+            )
+            .on_conflict_do_update(
+                index_elements=[Merchant.normalized_name],
+                set_={"normalized_name": command.merchant_normalized_name},
+            )
+            .returning(Merchant.id)
+        )
+        return (await self._session.execute(statement)).scalar_one()
 
     async def _project_transaction_or_none(
         self,

@@ -94,6 +94,15 @@ class CategorySpendingType:
 
 
 @strawberry.type
+class MerchantSpendingType:
+    merchant_id: strawberry.ID | None
+    merchant_name: str
+    amount: str
+    currency: str
+    share_percentage: int
+
+
+@strawberry.type
 class MonthlySpendingType:
     month_start: date
     amount: str
@@ -108,12 +117,24 @@ class CreateTransactionInput:
     description: str
     transaction_date: datetime
     category_id: strawberry.ID | None = None
+    merchant_name: str | None = None
     status: TransactionStatusValue = TransactionStatusValue.POSTED
+
+
+@strawberry.input
+class CreateCategoryInput:
+    name: str
+    parent_category_id: strawberry.ID | None = None
 
 
 @strawberry.type
 class CreateTransactionSuccess:
     transaction: TransactionType
+
+
+@strawberry.type
+class CreateCategorySuccess:
+    category: CategoryType
 
 
 @strawberry.interface
@@ -141,4 +162,9 @@ class ConflictProblem(ClientProblem):
 CreateTransactionResult = Annotated[
     CreateTransactionSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
     strawberry.union("CreateTransactionResult"),
+]
+
+CreateCategoryResult = Annotated[
+    CreateCategorySuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
+    strawberry.union("CreateCategoryResult"),
 ]

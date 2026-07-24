@@ -40,6 +40,17 @@ class CreateTransactionCommand:
     transaction_date: datetime
     status: TransactionStatus
     category_id: UUID | None
+    merchant_name: str | None
+    merchant_normalized_name: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class CreateCategoryCommand:
+    """Normalized values for one owner-local category."""
+
+    name: str
+    normalized_name: str
+    parent_category_id: UUID | None
 
 
 def parse_create_transaction(
@@ -51,6 +62,7 @@ def parse_create_transaction(
     transaction_date: datetime,
     status: TransactionStatus = TransactionStatus.POSTED,
     category_id: UUID | None = None,
+    merchant_name: str | None = None,
 ) -> CreateTransactionCommand:
     """Validate an untrusted GraphQL command without lossy coercion."""
     parsed_amount = _parse_amount(amount)
@@ -74,6 +86,7 @@ def parse_create_transaction(
             message="Transaction date must include a timezone offset.",
             field="transactionDate",
         )
+    parsed_merchant_name, parsed_merchant_lookup = _parse_optional_merchant_name(merchant_name)
 
     return CreateTransactionCommand(
         amount=parsed_amount,
@@ -83,6 +96,34 @@ def parse_create_transaction(
         transaction_date=transaction_date.astimezone(UTC),
         status=status,
         category_id=category_id,
+        merchant_name=parsed_merchant_name,
+        merchant_normalized_name=parsed_merchant_lookup,
+    )
+
+
+def parse_create_category(
+    *,
+    name: str,
+    parent_category_id: UUID | None = None,
+) -> CreateCategoryCommand:
+    """Validate and normalize a private category command."""
+    parsed_name = normalize_display_text(name)
+    if not parsed_name:
+        raise LedgerValidationError(
+            code="INVALID_CATEGORY_NAME",
+            message="Category name cannot be blank.",
+            field="name",
+        )
+    if len(parsed_name) > 80:
+        raise LedgerValidationError(
+            code="INVALID_CATEGORY_NAME",
+            message="Category name cannot exceed 80 characters.",
+            field="name",
+        )
+    return CreateCategoryCommand(
+        name=parsed_name,
+        normalized_name=parsed_name.casefold(),
+        parent_category_id=parent_category_id,
     )
 
 
@@ -131,3 +172,18 @@ def _parse_currency(raw_currency: str) -> str:
             field="currency",
         )
     return currency
+
+
+def _parse_optional_merchant_name(value: str | None) -> tuple[str | None, str | None]:
+    if value is None:
+        return None, None
+    display_name = normalize_display_text(value)
+    if not display_name:
+        return None, None
+    if len(display_name) > 160:
+        raise LedgerValidationError(
+            code="INVALID_MERCHANT_NAME",
+            message="Merchant name cannot exceed 160 characters.",
+            field="merchantName",
+        )
+    return display_name, display_name.casefold()
