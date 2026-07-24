@@ -32,7 +32,7 @@ function renderApp() {
 }
 
 describe('SpendGraph dashboard', () => {
-  it('renders the live Phase 1 financial overview', async () => {
+  it('renders the live financial overview and review-first AI inbox', async () => {
     renderApp();
 
     expect(
@@ -48,7 +48,12 @@ describe('SpendGraph dashboard', () => {
       screen.getByRole('table', { name: /latest transactions/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/deterministic phase 1 ledger services/i),
+      screen.getByText(
+        /ai-derived records appear only after explicit approval/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /financial notes inbox/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/synthetic/i)).not.toBeInTheDocument();
   });
@@ -92,6 +97,7 @@ describe('SpendGraph dashboard', () => {
       'Close navigation panel',
       'Overview',
       'Transactions',
+      'AI inbox',
       'People',
       'Money owed',
       'Recurring',

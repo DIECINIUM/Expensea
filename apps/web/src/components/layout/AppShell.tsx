@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   CircleDollarSign,
   CreditCard,
   LayoutDashboard,
@@ -39,6 +40,7 @@ const navigationItems: readonly NavigationItem[] = [
     current: true,
   },
   { label: 'Transactions', href: '#transactions', icon: CreditCard },
+  { label: 'AI inbox', href: '#ai-inbox', icon: BrainCircuit },
   { label: 'People', href: '#people', icon: Users },
   { label: 'Money owed', href: '#obligations', icon: CircleDollarSign },
   { label: 'Recurring', href: '#recurring', icon: Repeat2 },
@@ -191,7 +193,7 @@ function TopBar({
           </span>
           <span className="hidden text-left xl:block">
             <span className="block text-xs font-semibold text-slate-700">
-              Phase 1 ledger
+              Review-first ledger
             </span>
             <span className="block text-[10px] font-medium text-slate-600">
               Development identity
