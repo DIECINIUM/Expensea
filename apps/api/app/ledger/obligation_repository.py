@@ -79,6 +79,25 @@ class ObligationRepository:
         rows = (await self._session.execute(statement)).all()
         return tuple(PersonView(id=person_id, name=name) for person_id, name in rows)
 
+    async def find_person_by_normalized_name(
+        self,
+        user_id: UUID,
+        normalized_name: str,
+    ) -> PersonView | None:
+        """Resolve one owner-local person after a race-safe duplicate insert."""
+        row = (
+            await self._session.execute(
+                select(Person.id, Person.name).where(
+                    Person.user_id == user_id,
+                    Person.normalized_name == normalized_name,
+                )
+            )
+        ).one_or_none()
+        if row is None:
+            return None
+        person_id, name = row
+        return PersonView(id=person_id, name=name)
+
     async def person_exists(self, user_id: UUID, person_id: UUID) -> bool:
         """Check an owner-person reference without revealing another tenant."""
         statement = select(Person.id).where(

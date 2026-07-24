@@ -10,6 +10,7 @@ from app.models.ingestion import (
 )
 from app.models.obligation import ObligationSettlement, Payable, Receivable
 from app.models.person import Person
+from app.models.proposal import FinancialEventProposal
 from app.models.recurring import RecurringPayment
 from app.models.transaction import LedgerTransaction
 from app.models.user import User
@@ -17,6 +18,7 @@ from app.models.user import User
 __all__ = [
     "Category",
     "Evidence",
+    "FinancialEventProposal",
     "LedgerTransaction",
     "Merchant",
     "NormalizedFinancialEvent",

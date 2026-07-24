@@ -82,6 +82,14 @@ class EvidenceKind(StrEnum):
     SOURCE_EVENT = "source_event"
 
 
+class ProposalStatus(StrEnum):
+    """Human-review lifecycle for untrusted extracted financial events."""
+
+    NEEDS_REVIEW = "needs_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class ObligationStatus(StrEnum):
     """Settlement lifecycle for receivables and payables."""
 

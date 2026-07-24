@@ -62,6 +62,7 @@ class ExtractedFinancialEvent(BaseModel):
     merchant_name: str | None = Field(default=None, max_length=160)
     counterparty: str | None = Field(default=None, max_length=160)
     recurrence_rule: RecurrenceRule | None = None
+    next_expected_date: date | None = None
     category_hint: str | None = Field(default=None, max_length=80)
     tags: tuple[str, ...] = ()
     confidence: Decimal = Field(ge=0, le=1, max_digits=5, decimal_places=4)
@@ -283,4 +284,6 @@ def _review_reasons(
         reasons.append("MISSING_COUNTERPARTY")
     if event.event_kind is NormalizedEventKind.RECURRING and event.recurrence_rule is None:
         reasons.append("MISSING_RECURRENCE_RULE")
+    if event.event_kind is NormalizedEventKind.RECURRING and event.next_expected_date is None:
+        reasons.append("MISSING_NEXT_EXPECTED_DATE")
     return tuple(reasons)

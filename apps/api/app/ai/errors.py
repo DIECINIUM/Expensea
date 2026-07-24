@@ -20,3 +20,7 @@ class AIProviderError(AIError):
 
 class AIOutputError(AIError):
     """Provider content failed the requested financial schema."""
+
+
+class ProposalReviewError(AIError):
+    """A proposal cannot complete the requested deterministic review action."""
