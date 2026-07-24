@@ -11,7 +11,7 @@ import pytest
 from fastapi import FastAPI
 from sqlalchemy.schema import CreateSchema, DropSchema
 
-from app.core.config import AppEnvironment, Settings
+from app.core.config import AIProvider, AppEnvironment, Settings
 from app.db.base import Base
 from app.db.session import Database
 from app.factory import create_app
@@ -50,6 +50,8 @@ def test_settings() -> Settings:
         app_version="0.1.0-test",
         app_env=AppEnvironment.TEST,
         app_debug=False,
+        ai_provider=AIProvider.DISABLED,
+        ai_base_url="http://127.0.0.1:11434",
         database_url="postgresql+psycopg://unused:unused@localhost:5432/unused",
         cors_origins='["http://localhost:5173"]',
     )

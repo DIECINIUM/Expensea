@@ -12,6 +12,7 @@ from app.graphql.context import GraphQLContext
 from app.graphql.mappers import (
     map_category,
     map_category_spending,
+    map_financial_event_proposal,
     map_merchant_spending,
     map_monthly_spending,
     map_obligation,
@@ -21,17 +22,20 @@ from app.graphql.mappers import (
     map_transaction,
     map_transaction_page,
     map_user,
+    to_domain_proposal_status,
 )
 from app.graphql.safety import require_user_id, resolve_safely
 from app.graphql.types import (
     CategorySpendingType,
     CategoryType,
+    FinancialEventProposalType,
     FinancialSummaryType,
     MerchantSpendingType,
     MonthlySpendingType,
     ObligationSummaryType,
     ObligationType,
     PersonType,
+    ProposalStatusValue,
     RecurringPaymentType,
     RecurringSummaryType,
     TransactionConnectionType,
@@ -183,6 +187,20 @@ class Query:
             info.context,
         )
         return [map_category(value) for value in values]
+
+    @strawberry.field
+    async def financial_event_proposals(
+        self,
+        info: Info[GraphQLContext, None],
+        status: ProposalStatusValue | None = ProposalStatusValue.NEEDS_REVIEW,
+    ) -> list[FinancialEventProposalType]:
+        """Return owner-scoped extracted proposals without raw private content."""
+        user_id = require_user_id(info.context)
+        values = await info.context.proposals.list(
+            user_id,
+            status=to_domain_proposal_status(status) if status is not None else None,
+        )
+        return [map_financial_event_proposal(value) for value in values]
 
     @strawberry.field
     async def recurring_payments(

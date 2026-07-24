@@ -54,6 +54,35 @@ class ObligationStatusValue(Enum):
     CANCELLED = "CANCELLED"
 
 
+@strawberry.enum
+class FinancialEventKindValue(Enum):
+    EXPENSE = "EXPENSE"
+    INCOME = "INCOME"
+    TRANSFER = "TRANSFER"
+    REFUND = "REFUND"
+    SHARED_EXPENSE = "SHARED_EXPENSE"
+    RECEIVABLE = "RECEIVABLE"
+    PAYABLE = "PAYABLE"
+    RECURRING = "RECURRING"
+    UNKNOWN = "UNKNOWN"
+
+
+@strawberry.enum
+class ProposalStatusValue(Enum):
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+@strawberry.enum
+class ConnectorTypeValue(Enum):
+    MANUAL_NOTE = "MANUAL_NOTE"
+    CSV_IMPORT = "CSV_IMPORT"
+    MOCK_RECEIPT = "MOCK_RECEIPT"
+    GMAIL = "GMAIL"
+    GOOGLE_KEEP_TAKEOUT = "GOOGLE_KEEP_TAKEOUT"
+
+
 @strawberry.type
 class UserType:
     id: strawberry.ID
@@ -203,6 +232,34 @@ class ObligationSummaryType:
     net_exposure: str
 
 
+@strawberry.type
+class FinancialEventProposalType:
+    id: strawberry.ID
+    raw_event_id: strawberry.ID
+    source: ConnectorTypeValue
+    event_kind: FinancialEventKindValue
+    amount: str | None
+    currency: str | None
+    description: str
+    occurred_at: datetime | None
+    due_date: date | None
+    merchant_name: str | None
+    counterparty: str | None
+    recurrence_rule: RecurrenceRuleValue | None
+    next_expected_date: date | None
+    category_hint: str | None
+    tags: list[str]
+    confidence: str
+    status: ProposalStatusValue
+    review_reasons: list[str]
+    provider: str
+    model: str
+    prompt_version: str
+    created_at: datetime
+    canonical_target_type: str | None
+    canonical_target_id: strawberry.ID | None
+
+
 @strawberry.input
 class CreateTransactionInput:
     amount: str
@@ -277,6 +334,14 @@ class SettlePayableInput:
     note: str | None = None
 
 
+@strawberry.input
+class SubmitFinancialNoteInput:
+    note: str
+    source_timestamp: datetime
+    client_request_id: strawberry.ID
+    labels: list[str] | None = None
+
+
 @strawberry.type
 class CreateTransactionSuccess:
     transaction: TransactionType
@@ -332,6 +397,16 @@ class SettlePayableSuccess:
 @strawberry.type
 class CancelObligationSuccess:
     obligation: ObligationType
+
+
+@strawberry.type
+class SubmitFinancialNoteSuccess:
+    proposal: FinancialEventProposalType
+
+
+@strawberry.type
+class ReviewFinancialProposalSuccess:
+    proposal: FinancialEventProposalType
 
 
 @strawberry.interface
@@ -409,4 +484,14 @@ SettlePayableResult = Annotated[
 CancelObligationResult = Annotated[
     CancelObligationSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
     strawberry.union("CancelObligationResult"),
+]
+
+SubmitFinancialNoteResult = Annotated[
+    SubmitFinancialNoteSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
+    strawberry.union("SubmitFinancialNoteResult"),
+]
+
+ReviewFinancialProposalResult = Annotated[
+    ReviewFinancialProposalSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
+    strawberry.union("ReviewFinancialProposalResult"),
 ]

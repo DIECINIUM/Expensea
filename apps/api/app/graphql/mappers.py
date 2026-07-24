@@ -4,7 +4,9 @@ from decimal import Decimal
 
 import strawberry
 
+from app.ai.proposal_dto import FinancialEventProposalView
 from app.domain.enums import (
+    ProposalStatus,
     RecurrenceRule,
     RecurringPaymentStatus,
 )
@@ -17,6 +19,9 @@ from app.domain.enums import (
 from app.graphql.types import (
     CategorySpendingType,
     CategoryType,
+    ConnectorTypeValue,
+    FinancialEventKindValue,
+    FinancialEventProposalType,
     FinancialSummaryType,
     MerchantSpendingType,
     MonthlySpendingType,
@@ -24,6 +29,7 @@ from app.graphql.types import (
     ObligationType,
     PageInfoType,
     PersonType,
+    ProposalStatusValue,
     RecordedRecurringPaymentType,
     RecurrenceRuleValue,
     RecurringPaymentStatusValue,
@@ -207,6 +213,45 @@ def map_settlement(value: SettlementView) -> SettlementType:
     )
 
 
+def map_financial_event_proposal(
+    value: FinancialEventProposalView,
+) -> FinancialEventProposalType:
+    return FinancialEventProposalType(
+        id=strawberry.ID(str(value.id)),
+        raw_event_id=strawberry.ID(str(value.raw_event_id)),
+        source=ConnectorTypeValue[value.source.name],
+        event_kind=FinancialEventKindValue[value.event_kind.name],
+        amount=money_string(value.amount) if value.amount is not None else None,
+        currency=value.currency,
+        description=value.description,
+        occurred_at=value.occurred_at,
+        due_date=value.due_date,
+        merchant_name=value.merchant_name,
+        counterparty=value.counterparty,
+        recurrence_rule=(
+            RecurrenceRuleValue[value.recurrence_rule.name]
+            if value.recurrence_rule is not None
+            else None
+        ),
+        next_expected_date=value.next_expected_date,
+        category_hint=value.category_hint,
+        tags=list(value.tags),
+        confidence=money_string(value.confidence),
+        status=ProposalStatusValue[value.status.name],
+        review_reasons=list(value.review_reasons),
+        provider=value.provider,
+        model=value.model,
+        prompt_version=value.prompt_version,
+        created_at=value.created_at,
+        canonical_target_type=value.canonical_target_type,
+        canonical_target_id=(
+            strawberry.ID(str(value.canonical_target_id))
+            if value.canonical_target_id is not None
+            else None
+        ),
+    )
+
+
 def to_domain_transaction_type(value: TransactionTypeValue) -> DomainTransactionType:
     return DomainTransactionType[value.name]
 
@@ -225,3 +270,7 @@ def to_domain_recurring_status(
     value: RecurringPaymentStatusValue,
 ) -> RecurringPaymentStatus:
     return RecurringPaymentStatus[value.name]
+
+
+def to_domain_proposal_status(value: ProposalStatusValue) -> ProposalStatus:
+    return ProposalStatus[value.name]

@@ -1,12 +1,14 @@
 """Strawberry schema and FastAPI router assembly."""
 
 from functools import partial
+from typing import cast
 
 import strawberry
 from fastapi import Request
 from strawberry.extensions import MaxAliasesLimiter, MaxTokensLimiter, QueryDepthLimiter
 from strawberry.fastapi import GraphQLRouter
 
+from app.ai.contracts import StructuredCompletionProvider
 from app.auth.authenticator import DevelopmentAuthenticator
 from app.core.config import Settings
 from app.db.session import database_from_request
@@ -38,6 +40,10 @@ def create_graphql_router(settings: Settings) -> GraphQLRouter[GraphQLContext]:
             settings,
             database_from_request(request),
             principal,
+            cast(
+                StructuredCompletionProvider,
+                request.app.state.structured_provider,
+            ),
         )
 
     return GraphQLRouter(

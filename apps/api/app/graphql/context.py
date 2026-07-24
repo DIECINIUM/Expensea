@@ -1,7 +1,12 @@
 """Typed dependencies available to GraphQL resolvers."""
 
+from decimal import Decimal
+
 from strawberry.fastapi import BaseContext
 
+from app.ai.contracts import StructuredCompletionProvider
+from app.ai.extraction import FinancialNoteExtractor
+from app.ai.proposal_service import FinancialProposalService
 from app.auth.principal import Principal
 from app.core.config import Settings
 from app.core.logging import current_request_id
@@ -24,12 +29,21 @@ class GraphQLContext(BaseContext):
         settings: Settings,
         database: Database,
         principal: Principal | None,
+        structured_provider: StructuredCompletionProvider,
     ) -> None:
         self.settings = settings
         self.principal = principal
         self.ledger = LedgerService(database)
         self.obligations = ObligationService(database)
         self.recurring = RecurringPaymentService(database)
+        self.proposals = FinancialProposalService(
+            database,
+            FinancialNoteExtractor(
+                structured_provider,
+                max_input_chars=settings.ai_max_input_chars,
+                review_confidence_threshold=Decimal(str(settings.ai_review_confidence_threshold)),
+            ),
+        )
 
     @property
     def request_id(self) -> str | None:

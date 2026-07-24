@@ -7,6 +7,7 @@ from typing import cast
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ai.factory import create_structured_provider
 from app.api.routes import router as system_router
 from app.core.config import Settings, get_settings
 from app.core.logging import RequestContextMiddleware, configure_logging
@@ -37,6 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.state.settings = app_settings
     application.state.database = Database(app_settings.database_url)
+    application.state.structured_provider = create_structured_provider(app_settings)
 
     # The request context turns unexpected exceptions into non-sensitive,
     # correlation-friendly responses. CORS is added last so it wraps those errors.

@@ -7,9 +7,11 @@ from uuid import UUID
 import strawberry
 from strawberry.types import Info
 
+from app.ai.errors import AIError, ProposalReviewError
 from app.graphql.context import GraphQLContext
 from app.graphql.mappers import (
     map_category,
+    map_financial_event_proposal,
     map_obligation,
     map_person,
     map_recorded_recurring_payment,
@@ -48,6 +50,8 @@ from app.graphql.types import (
     RecordRecurringPaymentResult,
     RecordRecurringPaymentSuccess,
     RecurringPaymentStatusValue,
+    ReviewFinancialProposalResult,
+    ReviewFinancialProposalSuccess,
     SetRecurringPaymentStatusResult,
     SetRecurringPaymentStatusSuccess,
     SettlePayableInput,
@@ -56,8 +60,12 @@ from app.graphql.types import (
     SettleReceivableInput,
     SettleReceivableResult,
     SettleReceivableSuccess,
+    SubmitFinancialNoteInput,
+    SubmitFinancialNoteResult,
+    SubmitFinancialNoteSuccess,
     ValidationProblem,
 )
+from app.ingestion.errors import IngestionError
 from app.ledger.commands import parse_create_category, parse_create_transaction
 from app.ledger.errors import (
     LedgerConflictError,
@@ -129,6 +137,76 @@ class Mutation:
             )
 
         return CreateTransactionSuccess(transaction=map_transaction(created))
+
+    @strawberry.mutation
+    async def submit_financial_note(
+        self,
+        info: Info[GraphQLContext, None],
+        input: SubmitFinancialNoteInput,
+    ) -> SubmitFinancialNoteResult:
+        """Extract one authenticated note into a review-only proposal."""
+        user_id = require_user_id(info.context)
+        try:
+            client_request_id = _parse_uuid(
+                input.client_request_id,
+                "clientRequestId",
+            )
+            proposal = await info.context.proposals.submit_manual_note(
+                user_id,
+                note=input.note,
+                source_timestamp=input.source_timestamp,
+                client_request_id=client_request_id,
+                labels=input.labels or (),
+            )
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerNotFoundError as exc:
+            return NotFoundProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerConflictError as exc:
+            return ConflictProblem(code=exc.code, message=exc.message, field=exc.field)
+        except (AIError, IngestionError) as exc:
+            return _proposal_problem(exc)
+        return SubmitFinancialNoteSuccess(proposal=map_financial_event_proposal(proposal))
+
+    @strawberry.mutation
+    async def approve_financial_proposal(
+        self,
+        info: Info[GraphQLContext, None],
+        id: strawberry.ID,
+    ) -> ReviewFinancialProposalResult:
+        user_id = require_user_id(info.context)
+        try:
+            proposal_id = _parse_uuid(id, "id")
+            proposal = await info.context.proposals.approve(user_id, proposal_id)
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerNotFoundError as exc:
+            return NotFoundProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerConflictError as exc:
+            return ConflictProblem(code=exc.code, message=exc.message, field=exc.field)
+        except (AIError, IngestionError) as exc:
+            return _proposal_problem(exc)
+        return ReviewFinancialProposalSuccess(proposal=map_financial_event_proposal(proposal))
+
+    @strawberry.mutation
+    async def reject_financial_proposal(
+        self,
+        info: Info[GraphQLContext, None],
+        id: strawberry.ID,
+    ) -> ReviewFinancialProposalResult:
+        user_id = require_user_id(info.context)
+        try:
+            proposal_id = _parse_uuid(id, "id")
+            proposal = await info.context.proposals.reject(user_id, proposal_id)
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerNotFoundError as exc:
+            return NotFoundProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerConflictError as exc:
+            return ConflictProblem(code=exc.code, message=exc.message, field=exc.field)
+        except (AIError, IngestionError) as exc:
+            return _proposal_problem(exc)
+        return ReviewFinancialProposalSuccess(proposal=map_financial_event_proposal(proposal))
 
     @strawberry.mutation
     async def create_category(
@@ -494,3 +572,30 @@ def _parse_uuid(value: strawberry.ID, field: str) -> UUID:
             message="ID must be a UUID.",
             field=field,
         ) from None
+
+
+def _proposal_problem(
+    error: AIError | IngestionError,
+) -> ValidationProblem | NotFoundProblem | ConflictProblem:
+    if isinstance(error, ProposalReviewError):
+        if error.code.endswith("_NOT_FOUND"):
+            return NotFoundProblem(
+                code=error.code,
+                message=error.message,
+                field=None,
+            )
+        if error.code in {
+            "PROPOSAL_ALREADY_REVIEWED",
+            "PROPOSAL_KIND_NOT_APPROVABLE",
+        }:
+            return ConflictProblem(
+                code=error.code,
+                message=error.message,
+                field=None,
+            )
+    if error.code in {
+        "SOURCE_IDENTITY_CONTENT_MISMATCH",
+        "SOURCE_CONNECTION_INACTIVE",
+    }:
+        return ConflictProblem(code=error.code, message=error.message, field=None)
+    return ValidationProblem(code=error.code, message=error.message, field=None)
