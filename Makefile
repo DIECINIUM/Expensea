@@ -8,7 +8,7 @@ API_PIP := $(VENV)/bin/pip
 API_DIR := apps/api
 WEB_DIR := apps/web
 
-.PHONY: help setup lock env db-up bootstrap migrate seed dev stop dev-api dev-web smoke test test-api test-web lint lint-api lint-web typecheck audit format build eval-extraction check
+.PHONY: help setup lock env db-up bootstrap migrate seed dev stop dev-api dev-web smoke test test-api test-web lint lint-api lint-web typecheck audit format build eval-extraction eval-reconciliation check
 
 help:
 	@echo "SpendGraph AI development commands"
@@ -28,6 +28,7 @@ help:
 	@echo "  make audit      Run Python and Node dependency audits"
 	@echo "  make build      Build the frontend production bundle"
 	@echo "  make eval-extraction  Evaluate configured AI on labelled synthetic notes"
+	@echo "  make eval-reconciliation  Evaluate deterministic duplicate decisions"
 	@echo "  make check      Run lint, type checks, tests, and build"
 
 env:
@@ -126,5 +127,9 @@ eval-extraction: env
 	@set -a; . ./.env; set +a; \
 	PYTHONPATH=$(API_DIR) $(API_PYTHON) evals/run_extraction.py \
 		--dataset evals/extraction/v1.jsonl
+
+eval-reconciliation:
+	PYTHONPATH=$(API_DIR) $(API_PYTHON) evals/run_reconciliation.py \
+		--dataset evals/reconciliation/v1.jsonl
 
 check: lint typecheck test build audit
