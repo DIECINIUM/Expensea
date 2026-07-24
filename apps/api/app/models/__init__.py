@@ -11,6 +11,7 @@ from app.models.ingestion import (
 from app.models.obligation import ObligationSettlement, Payable, Receivable
 from app.models.person import Person
 from app.models.proposal import FinancialEventProposal
+from app.models.reconciliation import ReconciliationAction, ReconciliationCase
 from app.models.recurring import RecurringPayment
 from app.models.transaction import LedgerTransaction
 from app.models.user import User
@@ -28,6 +29,8 @@ __all__ = [
     "RawEvent",
     "RawEventProcessing",
     "Receivable",
+    "ReconciliationAction",
+    "ReconciliationCase",
     "RecurringPayment",
     "SourceConnection",
     "User",

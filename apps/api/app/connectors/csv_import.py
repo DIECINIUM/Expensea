@@ -39,6 +39,7 @@ _ALLOWED_COLUMNS = frozenset(
         "counterparty",
         "category_hint",
         "tags",
+        "payment_identifiers",
         "confidence",
     }
 )
@@ -185,13 +186,25 @@ def _row_envelope(
         "event_kind": event_kind,
         "description": description,
     }
-    for column in _OPTIONAL_COLUMNS - {"external_id", "occurred_at", "tags"}:
+    for column in _OPTIONAL_COLUMNS - {
+        "external_id",
+        "occurred_at",
+        "tags",
+        "payment_identifiers",
+    }:
         value = values.get(column)
         if value:
             payload[column] = value
     tags = values.get("tags")
     if tags:
         payload["tags"] = [tag.strip() for tag in tags.split("|") if tag.strip()]
+    payment_identifiers = values.get("payment_identifiers")
+    if payment_identifiers:
+        payload["payment_identifiers"] = [
+            identifier.strip()
+            for identifier in payment_identifiers.split("|")
+            if identifier.strip()
+        ]
 
     occurred_at = _optional_datetime(values.get("occurred_at"), row_number=row_number)
     if occurred_at is not None:

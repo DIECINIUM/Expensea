@@ -86,8 +86,37 @@ class ProposalStatus(StrEnum):
     """Human-review lifecycle for untrusted extracted financial events."""
 
     NEEDS_REVIEW = "needs_review"
+    RECONCILIATION_REVIEW = "reconciliation_review"
     APPROVED = "approved"
     REJECTED = "rejected"
+
+
+class ReconciliationDecision(StrEnum):
+    """Initial deterministic duplicate decision for one normalized event."""
+
+    MERGE = "merge"
+    POSSIBLE_DUPLICATE = "possible_duplicate"
+    NEW_TRANSACTION = "new_transaction"
+
+
+class ReconciliationStatus(StrEnum):
+    """Current owner-review lifecycle for a reconciliation case."""
+
+    PENDING = "pending"
+    MERGED = "merged"
+    KEPT_SEPARATE = "kept_separate"
+    UNMERGED = "unmerged"
+
+
+class ReconciliationActionType(StrEnum):
+    """Append-only audit vocabulary for reconciliation state changes."""
+
+    CANDIDATE_FLAGGED = "candidate_flagged"
+    AUTO_MERGED = "auto_merged"
+    CREATED_NEW = "created_new"
+    USER_MERGED = "user_merged"
+    USER_KEPT_SEPARATE = "user_kept_separate"
+    USER_UNMERGED = "user_unmerged"
 
 
 class ObligationStatus(StrEnum):

@@ -1,5 +1,6 @@
 """Configuration parsing tests."""
 
+from decimal import Decimal
 from uuid import UUID
 
 import pytest
@@ -74,6 +75,41 @@ def test_ollama_settings_are_server_only_and_typed() -> None:
     assert settings.ai_max_attempts == 3
     assert settings.ai_retry_backoff_seconds == 0.5
     assert settings.ai_review_confidence_threshold == 0.9
+
+
+def test_reconciliation_settings_are_typed_and_conservative() -> None:
+    settings = Settings(
+        _env_file=None,
+        reconciliation_candidate_window_minutes=180,
+        reconciliation_max_candidates=12,
+        reconciliation_possible_duplicate_threshold="0.75",
+        reconciliation_auto_merge_threshold="0.95",
+        reconciliation_amount_weight="0.40",
+        reconciliation_time_weight="0.20",
+        reconciliation_merchant_weight="0.20",
+        reconciliation_description_weight="0.20",
+    )
+
+    assert settings.reconciliation_candidate_window_minutes == 180
+    assert settings.reconciliation_max_candidates == 12
+    assert settings.reconciliation_auto_merge_threshold == Decimal("0.95")
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {
+            "reconciliation_possible_duplicate_threshold": "0.95",
+            "reconciliation_auto_merge_threshold": "0.90",
+        },
+        {"reconciliation_amount_weight": "0.50"},
+    ],
+)
+def test_reconciliation_settings_reject_unsafe_policy(
+    values: dict[str, str],
+) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **values)
 
 
 @pytest.mark.parametrize(

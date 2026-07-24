@@ -29,6 +29,11 @@ def test_normalized_contract_preserves_exact_money_and_bounds_tags() -> None:
             "merchant_name": " Example   Cloud ",
             "category_hint": " Work Expense ",
             "tags": ["Subscription", " subscription ", "Work"],
+            "payment_identifiers": [
+                " UPI:123456789012 ",
+                "upi:123456789012",
+                "bank_ref:ABC-123",
+            ],
             "confidence": "0.9500",
         }
     )
@@ -39,6 +44,10 @@ def test_normalized_contract_preserves_exact_money_and_bounds_tags() -> None:
     assert event.description == "Cloud renewal"
     assert event.occurred_at == datetime(2026, 7, 24, 8, 30, tzinfo=UTC)
     assert event.tags == ("Subscription", "Work")
+    assert event.payment_identifiers == (
+        "upi:123456789012",
+        "bank_ref:abc-123",
+    )
     assert event.confidence == Decimal("0.9500")
 
 
@@ -73,6 +82,31 @@ def test_normalized_contract_rejects_unsafe_or_incomplete_pairs(
 ) -> None:
     with pytest.raises(ValidationError):
         NormalizedFinancialEventV1.model_validate(values)
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "untyped-reference",
+        "UPI:",
+        "upi:contains spaces",
+        "x:12",
+        f"bank_ref:{'x' * 150}",
+    ],
+)
+def test_normalized_contract_rejects_invalid_payment_identifiers(
+    identifier: str,
+) -> None:
+    with pytest.raises(ValidationError):
+        NormalizedFinancialEventV1.model_validate(
+            {
+                "event_kind": "expense",
+                "amount": "10.00",
+                "currency": "INR",
+                "description": "Invalid reference",
+                "payment_identifiers": [identifier],
+            }
+        )
 
 
 def test_content_identity_is_canonical_and_prefers_external_id() -> None:

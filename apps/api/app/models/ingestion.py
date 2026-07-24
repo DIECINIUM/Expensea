@@ -249,6 +249,10 @@ class NormalizedFinancialEvent(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
             name="confidence_range",
         ),
         CheckConstraint(
+            "jsonb_typeof(payment_identifiers) = 'array'",
+            name="payment_identifiers_array",
+        ),
+        CheckConstraint(
             "char_length(btrim(schema_version)) > 0",
             name="schema_version_not_blank",
         ),
@@ -265,6 +269,11 @@ class NormalizedFinancialEvent(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
             "user_id",
             "event_kind",
             "occurred_at",
+        ),
+        Index(
+            "ix_normalized_events_payment_identifiers",
+            "payment_identifiers",
+            postgresql_using="gin",
         ),
     )
 
@@ -293,6 +302,12 @@ class NormalizedFinancialEvent(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     counterparty: Mapped[str | None] = mapped_column(String(160))
     category_hint: Mapped[str | None] = mapped_column(String(80))
     tags: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+    )
+    payment_identifiers: Mapped[list[str]] = mapped_column(
         JSONB,
         nullable=False,
         default=list,

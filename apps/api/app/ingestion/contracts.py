@@ -1,5 +1,6 @@
 """Versioned provider-neutral financial-event contracts."""
 
+import re
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Literal, Self
@@ -14,6 +15,12 @@ from app.ledger.errors import LedgerValidationError
 NORMALIZED_EVENT_SCHEMA_VERSION: Literal["financial-event/v1"] = "financial-event/v1"
 MAX_TAGS = 12
 MAX_TAG_LENGTH = 40
+MAX_PAYMENT_IDENTIFIERS = 8
+MAX_PAYMENT_IDENTIFIER_LENGTH = 160
+_PAYMENT_IDENTIFIER_PATTERN = re.compile(
+    r"^(?P<namespace>[a-z][a-z0-9_.-]{1,31}):"
+    r"(?P<value>[a-z0-9][a-z0-9._/@-]{2,127})$"
+)
 
 
 class NormalizedFinancialEventV1(BaseModel):
@@ -31,6 +38,7 @@ class NormalizedFinancialEventV1(BaseModel):
     counterparty: str | None = Field(default=None, max_length=160)
     category_hint: str | None = Field(default=None, max_length=80)
     tags: tuple[str, ...] = ()
+    payment_identifiers: tuple[str, ...] = ()
     confidence: Decimal | None = Field(
         default=None,
         ge=0,
@@ -101,6 +109,33 @@ class NormalizedFinancialEventV1(BaseModel):
                 normalized.append(tag)
         if len(normalized) > MAX_TAGS:
             raise ValueError(f"events cannot have more than {MAX_TAGS} tags")
+        return tuple(normalized)
+
+    @field_validator("payment_identifiers", mode="before")
+    @classmethod
+    def normalize_payment_identifiers(cls, value: object) -> object:
+        """Canonicalize bounded typed references used only for exact matching."""
+        if not isinstance(value, (list, tuple)):
+            return value
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("payment identifiers must be strings")
+            identifier = item.strip().casefold()
+            if len(identifier) > MAX_PAYMENT_IDENTIFIER_LENGTH:
+                raise ValueError(
+                    f"payment identifiers cannot exceed {MAX_PAYMENT_IDENTIFIER_LENGTH} characters"
+                )
+            if not _PAYMENT_IDENTIFIER_PATTERN.fullmatch(identifier):
+                raise ValueError("payment identifiers must use a typed namespace:value format")
+            if identifier not in seen:
+                seen.add(identifier)
+                normalized.append(identifier)
+        if len(normalized) > MAX_PAYMENT_IDENTIFIERS:
+            raise ValueError(
+                f"events cannot have more than {MAX_PAYMENT_IDENTIFIERS} payment identifiers"
+            )
         return tuple(normalized)
 
     @model_validator(mode="after")

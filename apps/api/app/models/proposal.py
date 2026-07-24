@@ -195,7 +195,7 @@ class FinancialEventProposal(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             create_constraint=True,
             validate_strings=True,
             values_callable=enum_values,
-            length=16,
+            length=24,
         ),
         nullable=False,
         default=ProposalStatus.NEEDS_REVIEW,

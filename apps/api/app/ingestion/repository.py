@@ -209,6 +209,7 @@ class IngestionRepository:
                 counterparty=event.counterparty,
                 category_hint=event.category_hint,
                 tags=list(event.tags),
+                payment_identifiers=list(event.payment_identifiers),
                 confidence=event.confidence,
             )
             .on_conflict_do_nothing(

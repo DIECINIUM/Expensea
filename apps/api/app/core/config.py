@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from enum import StrEnum
 from functools import lru_cache
 from typing import Any, Self
@@ -82,6 +83,43 @@ class Settings(BaseSettings):
     ai_retry_backoff_seconds: float = Field(default=0.25, ge=0, le=10)
     ai_max_input_chars: int = Field(default=8_000, ge=256, le=32_000)
     ai_review_confidence_threshold: float = Field(default=0.85, ge=0, le=1)
+
+    reconciliation_candidate_window_minutes: int = Field(
+        default=1_440,
+        ge=1,
+        le=10_080,
+    )
+    reconciliation_max_candidates: int = Field(default=20, ge=1, le=100)
+    reconciliation_possible_duplicate_threshold: Decimal = Field(
+        default=Decimal("0.70"),
+        ge=0,
+        le=1,
+    )
+    reconciliation_auto_merge_threshold: Decimal = Field(
+        default=Decimal("0.92"),
+        ge=0,
+        le=1,
+    )
+    reconciliation_amount_weight: Decimal = Field(
+        default=Decimal("0.35"),
+        ge=0,
+        le=1,
+    )
+    reconciliation_time_weight: Decimal = Field(
+        default=Decimal("0.25"),
+        ge=0,
+        le=1,
+    )
+    reconciliation_merchant_weight: Decimal = Field(
+        default=Decimal("0.20"),
+        ge=0,
+        le=1,
+    )
+    reconciliation_description_weight: Decimal = Field(
+        default=Decimal("0.20"),
+        ge=0,
+        le=1,
+    )
 
     postgres_host: str = "localhost"
     postgres_port: int = Field(default=5432, ge=1, le=65535)
@@ -178,6 +216,25 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_environment_policy(self) -> Self:
         """Reject debug in deployed tiers and development defaults in production."""
+        reconciliation_weight = (
+            self.reconciliation_amount_weight
+            + self.reconciliation_time_weight
+            + self.reconciliation_merchant_weight
+            + self.reconciliation_description_weight
+        )
+        if reconciliation_weight != Decimal("1"):
+            msg = "Reconciliation scoring weights must sum to exactly 1"
+            raise ValueError(msg)
+        if (
+            self.reconciliation_possible_duplicate_threshold
+            >= self.reconciliation_auto_merge_threshold
+        ):
+            msg = (
+                "RECONCILIATION_POSSIBLE_DUPLICATE_THRESHOLD must be lower than "
+                "RECONCILIATION_AUTO_MERGE_THRESHOLD"
+            )
+            raise ValueError(msg)
+
         if self.app_env in {AppEnvironment.STAGING, AppEnvironment.PRODUCTION} and self.app_debug:
             msg = "APP_DEBUG must be false in staging and production"
             raise ValueError(msg)

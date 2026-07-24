@@ -18,12 +18,12 @@ from app.ingestion.errors import ConnectorContentError
 async def test_csv_rows_normalize_exact_money_and_replay_with_offset() -> None:
     document = (
         "external_id,event_kind,amount,currency,description,occurred_at,"
-        "merchant_name,category_hint,tags,confidence\n"
+        "merchant_name,category_hint,tags,payment_identifiers,confidence\n"
         "bank-1,expense,499.1250,INR,Cloud renewal,"
         "2026-07-24T14:00:00+05:30,Example Cloud,Work,"
-        "subscription|cloud,0.9900\n"
+        "subscription|cloud,upi:123456789012|bank_ref:abc123,0.9900\n"
         "bank-2,refund,50.0000,INR,Partial refund,"
-        "2026-07-25T14:00:00+05:30,Example Cloud,Work,refund,1.0000\n"
+        "2026-07-25T14:00:00+05:30,Example Cloud,Work,refund,,1.0000\n"
     )
     connector = CsvTransactionConnector.from_document("transactions.csv", document)
 
@@ -39,6 +39,10 @@ async def test_csv_rows_normalize_exact_money_and_replay_with_offset() -> None:
     assert normalized.currency == "INR"
     assert normalized.occurred_at == datetime(2026, 7, 24, 8, 30, tzinfo=UTC)
     assert normalized.tags == ("subscription", "cloud")
+    assert normalized.payment_identifiers == (
+        "upi:123456789012",
+        "bank_ref:abc123",
+    )
     assert first.events[0].locator["row"] == 2
 
 
