@@ -8,7 +8,7 @@ API_PIP := $(VENV)/bin/pip
 API_DIR := apps/api
 WEB_DIR := apps/web
 
-.PHONY: help setup lock env db-up migrate dev stop dev-api dev-web smoke test test-api test-web lint lint-api lint-web typecheck audit format build check
+.PHONY: help setup lock env db-up bootstrap migrate seed dev stop dev-api dev-web smoke test test-api test-web lint lint-api lint-web typecheck audit format build check
 
 help:
 	@echo "SpendGraph AI development commands"
@@ -19,7 +19,9 @@ help:
 	@echo "  make stop       Stop Compose services while preserving data"
 	@echo "  make smoke      Verify the local web-to-GraphQL foundation path"
 	@echo "  make db-up      Run only PostgreSQL with Docker Compose"
-	@echo "  make migrate    Apply Alembic migrations"
+	@echo "  make bootstrap  Apply migrations and seed the development ledger"
+	@echo "  make migrate    Apply Alembic migrations in Docker"
+	@echo "  make seed       Idempotently seed the development ledger"
 	@echo "  make test       Run backend and frontend tests"
 	@echo "  make lint       Run all linters and formatting checks"
 	@echo "  make typecheck  Run Python and TypeScript type checks"
@@ -54,7 +56,13 @@ db-up: env
 	docker compose up -d db
 
 migrate: env
-	$(VENV)/bin/alembic -c $(API_DIR)/alembic.ini upgrade head
+	docker compose run --rm migrate alembic -c alembic.ini upgrade head
+
+seed: env
+	docker compose run --rm migrate python -m app.seed
+
+bootstrap: env
+	docker compose run --rm migrate
 
 dev: env
 	docker compose up --build

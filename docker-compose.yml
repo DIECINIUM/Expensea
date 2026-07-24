@@ -1,5 +1,22 @@
 name: spendgraph-ai
 
+x-api-environment: &api-environment
+  APP_NAME: ${APP_NAME:-SpendGraph AI API}
+  APP_VERSION: ${APP_VERSION:-0.1.0}
+  APP_ENV: ${APP_ENV:-development}
+  APP_DEBUG: ${APP_DEBUG:-true}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  API_HOST: 0.0.0.0
+  API_PORT: 8000
+  CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:5173"]}'
+  DEV_AUTH_ENABLED: ${DEV_AUTH_ENABLED:-true}
+  DEV_USER_ID: ${DEV_USER_ID:-00000000-0000-4000-8000-000000000001}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: ${POSTGRES_USER:-spendgraph}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spendgraph}
+  POSTGRES_DB: ${POSTGRES_DB:-spendgraph}
+
 services:
   db:
     image: postgres:17-alpine
@@ -23,24 +40,30 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  migrate:
+    build:
+      context: ./apps/api
+      target: development
+    environment:
+      <<: *api-environment
+      DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-true}
+    command:
+      [
+        "sh",
+        "-c",
+        'alembic -c alembic.ini upgrade head && if [ "$${DEMO_SEED_ENABLED}" = "true" ]; then python -m app.seed; fi',
+      ]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: ./apps/api
       target: development
     environment:
-      APP_NAME: ${APP_NAME:-SpendGraph AI API}
-      APP_VERSION: ${APP_VERSION:-0.1.0}
-      APP_ENV: ${APP_ENV:-development}
-      APP_DEBUG: ${APP_DEBUG:-true}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      API_HOST: 0.0.0.0
-      API_PORT: 8000
-      CORS_ORIGINS: '${CORS_ORIGINS:-["http://localhost:5173"]}'
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:-spendgraph}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spendgraph}
-      POSTGRES_DB: ${POSTGRES_DB:-spendgraph}
+      <<: *api-environment
     command:
       [
         "uvicorn",
@@ -56,8 +79,8 @@ services:
     volumes:
       - ./apps/api:/app
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
