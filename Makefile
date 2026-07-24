@@ -129,7 +129,7 @@ eval-extraction: env
 		--dataset evals/extraction/v1.jsonl
 
 eval-reconciliation:
-	PYTHONPATH=$(API_DIR) $(API_PYTHON) evals/run_reconciliation.py \
+	@PYTHONPATH=$(API_DIR) $(API_PYTHON) evals/run_reconciliation.py \
 		--dataset evals/reconciliation/v1.jsonl
 
 check: lint typecheck test build audit
