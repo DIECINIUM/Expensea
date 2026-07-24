@@ -1,15 +1,15 @@
 # Implementation checklist
 
-**Last updated:** 2026-07-23
+**Last updated:** 2026-07-24
 
-**Current phase:** Phase 1 — deterministic ledger, first vertical slice
+**Current phase:** Phase 1 complete; Phase 2 is the next planned phase.
 
 **Rule:** implement Phase 1 through bounded vertical slices whose acceptance behavior
 is written before code and checked from actual commands.
 
 `[x]` means the artifact is present and reviewed in the repository. `[ ]` means it is
 not complete or has not yet been verified. Future-phase boxes are not defects in
-Phase 0.
+the completed Phase 1 scope.
 
 ## Global definition of done
 
@@ -175,25 +175,41 @@ feature is represented as real.
 
 - [x] Define the first vertical slice and its acceptance semantics in
   `docs/phase1-ledger.md`.
-- [ ] Implement user profile and development-auth ownership seam.
-- [ ] Add merchant and hierarchical system/user category models.
-- [ ] Add transaction model using `Decimal`/`NUMERIC`, currency, type, and status.
-- [ ] Add people, receivables, payables, and settlement history.
-- [ ] Add manually managed recurring payments.
-- [ ] Enforce same-user relationships, amount/currency checks, and foreign keys.
-- [ ] Add query-driven composite indexes.
-- [ ] Implement repositories and small transaction-bound services.
-- [ ] Implement deterministic financial-summary semantics per currency.
-- [ ] Add paginated GraphQL queries and manual mutations.
-- [ ] Ensure resolvers contain no SQL or financial calculations.
-- [ ] Add DataLoader only for demonstrated relationship batching.
-- [ ] Replace placeholder dashboard values with GraphQL data.
-- [ ] Add unit tests for money, statuses, periods/timezones, and summaries.
-- [ ] Add repository/GraphQL integration and cross-user authorization tests.
-- [ ] Seed realistic synthetic INR demo data.
+- [x] Implement user profile and development-auth ownership seam.
+- [x] Add merchant and hierarchical system/user category models.
+- [x] Add transaction model using `Decimal`/`NUMERIC`, currency, type, and status.
+- [x] Add people, receivables, payables, and immutable settlement history.
+- [x] Add manually managed recurring payments.
+- [x] Enforce same-user relationships, amount/currency checks, and foreign keys.
+- [x] Add query-driven composite indexes.
+- [x] Implement repositories and small transaction-bound services.
+- [x] Implement deterministic financial-summary semantics per currency.
+- [x] Add keyset-paginated GraphQL queries and typed manual mutations.
+- [x] Keep resolvers free of SQL and financial calculations.
+- [x] Inspect relationship loading; explicit aggregate/projection queries avoid an
+  N+1 path, so no DataLoader is introduced.
+- [x] Replace placeholder dashboard values with live GraphQL data.
+- [x] Add tested frontend controls for transactions, people, obligations,
+  settlements, and recurring payments.
+- [x] Add unit tests for money, statuses, periods/timezones, and summaries.
+- [x] Add repository/GraphQL integration and cross-user authorization tests.
+- [x] Seed a realistic, idempotent development INR ledger.
+- [x] Bootstrap a fresh Compose database through migrations and seed before API
+  startup.
 
 Acceptance: a user can manage manual transactions and obligations; totals are exact,
 tenant-isolated, tested, and visible in the dashboard.
+
+### Phase 1 verification
+
+- [x] Alembic upgrade, downgrade, and re-upgrade pass against PostgreSQL.
+- [x] The PostgreSQL-enabled backend suite passes: 99 tests.
+- [x] Ruff and strict mypy pass.
+- [x] Frontend ESLint, Prettier, TypeScript, 30 tests, and production build pass.
+- [x] Compose configuration validates.
+- [x] A separate empty Compose volume migrates and seeds successfully; the second
+  seed is a no-op.
+- [ ] The final pushed commit is green in every remote GitHub Actions job.
 
 ## Phase 2 — unified ingestion and provenance
 

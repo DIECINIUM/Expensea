@@ -1,11 +1,10 @@
 # Security and privacy
 
-**Document status:** Phase 0 threat-model baseline. The current repository is a
-development foundation, not a production security claim. Controls are labelled:
+**Document status:** Phase 1 threat model. The current repository has a tested
+development ledger but is not a production security claim. Controls are labelled:
 
-- **Implemented in Phase 0** — present and covered by repository tests where noted.
-- **Configured, runtime unverified** — represented in Compose/CI but not executed in
-  this environment.
+- **Implemented** — present and covered by repository tests where noted.
+- **Configured** — represented in Compose/CI and still dependent on each run result.
 - **Required before feature** — a release gate for the phase that introduces the
   relevant data or capability.
 - **Later hardening** — production control not represented as implemented.
@@ -66,7 +65,7 @@ The design considers:
 - replayed connector events or GraphQL mutations; and
 - dependency or CI supply-chain compromise.
 
-## Implemented Phase 0 controls
+## Implemented controls
 
 | Area | Implemented control |
 | --- | --- |
@@ -80,13 +79,17 @@ The design considers:
 | Requests/errors | Request IDs are validated/generated; JSON logs contain path but not query string; unexpected failures return a generic body with request ID and CORS headers |
 | Dependencies | Python production/development locks and npm lock are committed; setup installs from locks; strict production audits are part of `make check` |
 | CI supply chain | SHA-pinned actions, read-only permission, Dependabot, smoke/migration/container/audit contracts, and full-history gitleaks |
+| Identity seam | A server-selected development principal is allowed only in development/test and rejected in staging/production |
+| Tenant isolation | Every user-owned service/repository operation requires the principal; foreign and absent IDs share a public result |
+| Financial integrity | Decimal-string validation, `Decimal`, `NUMERIC(19, 4)`, checks, ownership-aware foreign keys, and atomic service transactions |
+| GraphQL ledger | POST-only execution, bounded query complexity, typed domain problems, keyset pagination, and sanitized unexpected failures |
+| Obligations | Row-locked settlements reject overpayment and terminal transitions while preserving append-only history |
+| Recurring payments | Locked expected occurrences reject stale/duplicate recording and create/advance atomically |
 
-Repository tests exercise settings policy, CORS, GraphQL transport, error correlation,
-logging configuration, and application-owned database resources. Compose
-configuration and all configured image targets were built locally; the database, API,
-and web reached healthy states, and a live migration plus volume-preserving
-stop/restart passed. The configured GitHub Actions jobs were not observed remotely.
-No statement above implies that Phase 1 tenant authorization already exists.
+Repository tests exercise settings policy, CORS, GraphQL transport, error
+correlation, logging, resource ownership, exact money, tenant isolation, obligation
+locking, recurring transitions, and query safety. Compose has also been verified
+from an empty disposable volume through migrations and idempotent development seed.
 
 The final local `make check` passed all tests and quality gates. Strict `pip-audit`
 found no known vulnerabilities in the Python production lock, and the runtime npm
@@ -178,8 +181,8 @@ non-AI execution path. A chat message alone is not consent for a financial mutat
 
 ## Authentication and session design
 
-Phase 0 may use an explicit development identity to exercise the health slice, but it
-must be unmistakable and unavailable in production.
+Phase 1 uses an explicit development identity to exercise the ledger. Settings make
+it unavailable in staging and production.
 
 Before financial data is exposed:
 
@@ -221,22 +224,22 @@ Authorization tests cover:
 - agent tool arguments containing another user's ID.
 
 PostgreSQL row-level security can become defense in depth, but it does not replace
-application authorization and is not claimed in Phase 0.
+application authorization and is not claimed in Phase 1.
 
 ## GraphQL/API controls
 
 | Threat | Control | Status |
 | --- | --- | --- |
-| SQL injection | SQLAlchemy bound parameters; no SQL assembled from model/user text | Parameter hiding implemented; financial queries begin Phase 1 |
-| Oversized/expensive queries | Pagination, input limits, depth/complexity limits, timeouts | Required with financial schema |
-| N+1 denial of service | Query inspection and request-scoped DataLoader | Required where measured |
-| Enumeration/IDOR | Ownership-scoped queries and non-revealing errors | Required before Phase 1 data |
+| SQL injection | SQLAlchemy bound parameters; no SQL assembled from model/user text | Implemented |
+| Oversized/expensive queries | Pagination, input limits, depth/complexity limits | Implemented for Phase 1 GraphQL |
+| N+1 denial of service | Explicit projection/aggregate queries; add request-scoped DataLoader only where measured | No Phase 1 N+1 path identified |
+| Enumeration/IDOR | Ownership-scoped queries and non-revealing errors | Implemented and cross-tenant tested |
 | Brute force/abuse | Rate limits by identity and endpoint/risk class | Production hardening |
-| Malicious strings | Boundary validation, length limits, contextual output escaping | Foundation validation implemented; domain limits later |
-| Stack/data leakage | Generic correlated failures; no SQL parameters/query strings in logs | Implemented in Phase 0 |
-| CORS abuse | Exact configured origins; never wildcard with credentials | Implemented in Phase 0 |
-| GraphQL query in URL | POST-only query execution | Implemented in Phase 0 |
-| Replay/duplicate writes | Idempotency keys and database uniqueness | Required when writes/ingestion exist |
+| Malicious strings | Boundary validation, length limits, contextual output escaping | Phase 1 domain limits implemented |
+| Stack/data leakage | Generic correlated failures; no SQL parameters/query strings in logs | Implemented |
+| CORS abuse | Exact configured origins; never wildcard with credentials | Implemented |
+| GraphQL query in URL | POST-only query execution | Implemented |
+| Replay/duplicate writes | Database uniqueness and locked expected-occurrence checks | Implemented for seeded/recurring identities; general ingestion idempotency begins Phase 2 |
 
 Introspection and the GraphQL IDE are environment-specific production decisions, not
 a substitute for authorization. HTTPS termination is mandatory outside local
@@ -295,7 +298,7 @@ deleting source data must address derived embeddings and cached model results.
 
 ## Secrets and configuration
 
-**Implemented Phase 0 baseline:**
+**Implemented baseline:**
 
 - commit `.env.example`, never `.env`;
 - keep realistic secrets out of examples, tests, Docker images, and frontend build
@@ -326,7 +329,7 @@ an automatic recovery step.
 Safe operational metadata includes request IDs, event IDs, status, provider/model,
 latency, token counts, retry counts, and stable error categories.
 
-Phase 0 emits structured JSON request completion events with method, URL **path**,
+The application emits structured JSON request completion events with method, URL **path**,
 status, duration, and request ID. Uvicorn's default access logger is disabled because
 its raw target can include query strings. Unexpected exception text and tracebacks
 are not emitted by the request middleware; clients receive a generic 500 while the
@@ -360,16 +363,16 @@ private-content capture. Retention and operator access are explicit.
 
 ## Security verification plan
 
-| Gate | Required tests/review |
-| --- | --- |
-| Phase 0 | Settings/CORS/transport/error/logging/resource tests; web-to-API smoke; dependency audits; configured secret, migration, Compose, and container CI contracts |
-| Phase 1 | Cross-tenant CRUD tests, money/state invariants, malformed GraphQL input |
-| Phase 2 | Duplicate/replay tests, source minimization, connector failure tests |
-| Phase 3 | Adversarial prompt-injection corpus, schema fuzzing, provider outage tests |
-| Phase 4 | False-merge evaluation and evidence-retention tests |
-| Phase 7 | Agent tool allowlist, cross-tenant attempts, write/tool injection, grounding |
-| Phase 8 | OAuth state/PKCE, token encryption/rotation, scope and deletion review |
-| Production | Threat-model update, backup restore, rate/load abuse, incident runbook |
+| Gate | Status | Required tests/review |
+| --- | --- | --- |
+| Phase 0 | Complete | Settings/CORS/transport/error/logging/resource tests; web-to-API smoke; dependency audits; secret, migration, Compose, and container CI contracts |
+| Phase 1 | Complete locally | Cross-tenant CRUD, exact-money/state invariants, malformed GraphQL, complexity limits, settlement locking, and recurring replay tests |
+| Phase 2 | Planned | Duplicate/replay tests, source minimization, connector failure tests |
+| Phase 3 | Planned | Adversarial prompt-injection corpus, schema fuzzing, provider outage tests |
+| Phase 4 | Planned | False-merge evaluation and evidence-retention tests |
+| Phase 7 | Planned | Agent tool allowlist, cross-tenant attempts, write/tool injection, grounding |
+| Phase 8 | Planned | OAuth state/PKCE, token encryption/rotation, scope and deletion review |
+| Production | Planned | Threat-model update, backup restore, rate/load abuse, incident runbook |
 
 Security tests must run against the same authorization paths used by GraphQL,
 background jobs, and agent tools.

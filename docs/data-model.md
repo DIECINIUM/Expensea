@@ -1,9 +1,8 @@
-# Conceptual Phase 1 data model
+# Phase 1 data model
 
-**Status: design only.** This document defines the proposed deterministic ledger for
-Phase 1. Phase 0 does not create these financial tables. Migrations and SQLAlchemy
-models, when implemented, become the executable source of truth and must update this
-document if the design changes.
+**Status: implemented.** Alembic revision `20260724_0002` and the SQLAlchemy models
+are the executable source of truth. This document explains that deployed contract
+and must change with future migrations.
 
 ## Scope
 
@@ -23,8 +22,8 @@ later phases. No AI-derived field is needed for Phase 1.
 
 ## Data conventions
 
-1. **Money:** Python `Decimal` and PostgreSQL `NUMERIC(19, 4)` are proposed for
-   storage. API amounts cross boundaries as decimal strings, never JSON floats.
+1. **Money:** Python `Decimal` and PostgreSQL `NUMERIC(19, 4)` store financial
+   values. API amounts cross boundaries as decimal strings, never JSON floats.
 2. **Currency:** every monetary row carries an uppercase ISO 4217 code. Totals group
    by currency; Phase 1 does not perform foreign-exchange conversion.
 3. **Amount sign:** stored amounts are non-negative. `transaction_type` supplies the
@@ -34,11 +33,10 @@ later phases. No AI-derived field is needed for Phase 1.
 5. **Identity:** externally exposed IDs are UUIDs. IDs alone never authorize access.
 6. **Tenancy:** user-owned rows include `user_id`; every read and write is scoped by
    the authenticated user.
-7. **Audit fields:** mutable entities have `created_at` and `updated_at`. Deletion of
-   ledger records should normally become a status transition rather than loss of
-   history.
-8. **Enums:** values below are initial proposals. Database constraints and typed
-   application enums must evolve together.
+7. **Audit fields:** mutable entities have `created_at` and `updated_at`. Phase 1
+   uses status transitions rather than deleting obligation history.
+8. **Enums:** database checks and typed application enums use the values documented
+   below and must evolve together.
 
 ## Relationship model
 
@@ -134,8 +132,8 @@ The diagram omits some nullable fields and audit columns for readability.
 | `timezone` | Valid IANA name, for example `Asia/Kolkata` |
 | `created_at`, `updated_at` | UTC audit instants |
 
-Phase 0 may use a development identity abstraction. Production authentication is a
-separate concern from this domain profile.
+Phase 1 uses a fixed development identity abstraction selected by the server.
+Production authentication is a separate concern from this domain profile.
 
 ### Merchant
 
@@ -163,15 +161,15 @@ users' transactions. Merchant merge/alias behavior is deferred until categorizat
 | `created_at`, `updated_at` | Audit instants |
 
 A user may assign system categories or their own categories, but never another
-user's category. Parent and child must have compatible ownership. Cycles are rejected
-by the service.
+user's category. Parent and child must have compatible ownership. Database triggers
+reject invisible parents and hierarchy cycles.
 
 ### Transaction
 
 | Field | Notes |
 | --- | --- |
 | `id`, `user_id` | UUID identity and owner |
-| `amount`, `currency` | Non-negative decimal amount and ISO currency |
+| `amount`, `currency` | Positive decimal amount and ISO currency |
 | `transaction_type` | `expense`, `income`, `transfer`, `refund`, `shared_expense` |
 | `merchant_id`, `category_id` | Nullable references |
 | `description` | User-visible, length-bounded text |
@@ -216,8 +214,8 @@ A receivable means another person owes the user.
 | `confidence` | Nullable `[0, 1]`; later extraction metadata, never authority |
 | `created_at`, `updated_at` | Audit instants |
 
-`overdue` may be derived from open balance and due date, or materialized by a
-well-defined service; it must not disagree across API surfaces.
+`overdue` is derived from open balance, due date, and the owner's current local date;
+it is not persisted as a clock-driven update.
 
 ### Payable
 
@@ -261,15 +259,15 @@ Cancelled obligations reject new settlements.
 | --- | --- |
 | `id`, `user_id` | Identity and owner |
 | `merchant_id` | Required canonical merchant |
-| `amount`, `currency` | Expected non-negative amount |
+| `amount`, `currency` | Expected positive amount |
 | `recurrence_rule` | Validated weekly/monthly/quarterly/yearly rule initially |
 | `next_expected_date` | User-calendar date |
 | `confidence` | Nullable for manual records; constrained to `[0, 1]` later |
 | `status` | `active`, `paused`, `ended`, or `needs_review` |
 | `created_at`, `updated_at` | Audit instants |
 
-Phase 1 may manage these records manually. Deterministic detection begins in Phase 6
-and never infers recurrence from a single transaction.
+Phase 1 manages these records manually. Deterministic detection begins in Phase 6
+and will not infer recurrence from a single transaction.
 
 ## Financial summary semantics
 
@@ -293,7 +291,7 @@ explicit exchange-rate subsystem exists.
 
 ## Integrity rules
 
-The Phase 1 implementation must enforce:
+The Phase 1 implementation enforces:
 
 - `amount > 0` for financial rows;
 - valid three-letter currency codes;
@@ -309,11 +307,11 @@ The Phase 1 implementation must enforce:
 Application checks improve messages; database constraints remain the final integrity
 barrier.
 
-## Initial indexes
+## Implemented indexes
 
-Indexes should follow verified query patterns, with this starting set:
+The migration creates the following query-driven indexes:
 
-| Table | Proposed index | Query served |
+| Table | Index shape | Query served |
 | --- | --- | --- |
 | `transaction` | `(user_id, transaction_date DESC, id)` | Cursor-paginated timeline/date range |
 | `transaction` | `(user_id, status, transaction_date)` | Summary calculations |

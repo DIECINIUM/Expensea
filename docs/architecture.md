@@ -1,10 +1,8 @@
 # Architecture
 
-**Document status:** Phase 0 architecture baseline. The implemented application
-surface is limited to API health contracts, a same-origin Apollo health/application
-metadata query through the Vite proxy, and a dashboard whose financial values remain
-synthetic. Unless marked **Implemented**, components below describe the planned
-system.
+**Document status:** Phase 1 architecture. The deterministic ledger, GraphQL API,
+PostgreSQL schema, development bootstrap, and live React dashboard are implemented.
+Connector, AI, reconciliation, and agent components remain planned.
 
 ## Goals
 
@@ -20,11 +18,13 @@ SpendGraph AI must:
 
 ## Phase boundaries
 
-| Capability | Delivery phase | Phase 0 status |
+| Capability | Delivery phase | Status |
 | --- | ---: | --- |
 | React/Apollo → Vite proxy → GraphQL health vertical slice | 0 | Implemented and automated-test covered |
 | PostgreSQL, migrations, local Compose, quality gates | 0 | Implemented and locally runtime-verified |
-| Canonical ledger and deterministic summaries | 1 | Planned |
+| Canonical ledger and deterministic summaries | 1 | Implemented and test covered |
+| People, obligations, settlements, and recurring schedules | 1 | Implemented and test covered |
+| Live ledger dashboard and manual management flows | 1 | Implemented and test covered |
 | Connector contract, raw events, evidence, idempotent ingestion | 2 | Planned |
 | AI extraction and confidence review | 3 | Planned |
 | Duplicate reconciliation | 4 | Planned |
@@ -34,37 +34,37 @@ SpendGraph AI must:
 | Real OAuth connector | 8 | Planned |
 | Durable queue/live processing UX | 9+ | Planned |
 
-## Implemented Phase 0 runtime
+## Implemented Phase 1 runtime
 
 ```mermaid
 flowchart LR
-    Browser["Browser<br/>React dashboard"]
-    Apollo["Apollo Client<br/>FoundationStatus query"]
+    Browser["Browser<br/>React Phase 1 dashboard"]
+    Apollo["Apollo Client<br/>typed ledger operations"]
     Vite["Vite dev server<br/>same-origin /graphql proxy"]
     Middleware["FastAPI middleware<br/>request ID, safe logs, CORS/errors"]
     GraphQL["Strawberry GraphQL<br/>POST only"]
-    Settings["Validated Settings<br/>health + appInfo"]
-    Factory["Application factory<br/>owned lazy Database"]
-    PG[(PostgreSQL 17<br/>no finance tables)]
+    Services["Owner-scoped services<br/>transactions + obligations + recurring"]
+    Repositories["SQLAlchemy repositories"]
+    PG[(PostgreSQL 17<br/>Phase 1 ledger)]
+    Bootstrap["Alembic + idempotent<br/>development seed"]
 
     Browser --> Apollo -->|POST /graphql| Vite
-    Vite -->|proxy to API| Middleware --> GraphQL --> Settings
-    Factory --> Settings
-    Factory -. persistence requested later .-> PG
+    Vite -->|proxy to API| Middleware --> GraphQL --> Services
+    Services --> Repositories --> PG
+    Bootstrap --> PG
 ```
 
-The live web status query reads process health and non-sensitive application
-metadata. Financial cards remain synthetic. REST and GraphQL health are liveness
-contracts and intentionally do not force a database connection before Phase 1.
+The web queries exact ledger values, renders explicit loading/error/empty states, and
+refetches after successful mutations. The API also retains the process-only REST and
+GraphQL health contracts.
 
 Local development uses `/graphql` as a browser-relative URL. The Vite proxy targets
 the configured API, avoiding a browser cross-origin hop while preserving a direct
 API CORS policy for callers that use the API origin.
 
-`make smoke` is the executable contract for this path. It starts local Uvicorn and
-Vite processes, waits for them, POSTs `health`/`appInfo` through the browser-facing
-Vite `/graphql` endpoint, validates the response, and cleans up. It does not require
-the financial database because the foundation query is intentionally process-only.
+`make smoke` remains the executable contract for the browser-facing proxy path.
+PostgreSQL-enabled API and frontend suites cover the financial behavior. The normal
+`make dev` path migrates and seeds PostgreSQL before API readiness.
 
 ## Assumptions
 
@@ -131,7 +131,7 @@ GraphQL is a delivery adapter. Resolvers authenticate, validate API input, call 
 or more application services, and map results. They do not calculate balances,
 contain SQL, call model vendors directly, or own transaction boundaries.
 
-In Phase 0, GraphQL queries are accepted only via POST; GET query execution is
+GraphQL queries are accepted only via POST; GET query execution is
 disabled. GraphiQL is available only when validated debug configuration enables it.
 
 ## Runtime configuration and resource ownership
@@ -267,7 +267,7 @@ so different screens cannot calculate conflicting totals.
 
 ## Background work evolution
 
-Phase 0 does not need a broker. Initial slow work can use an in-process job
+Phase 1 does not need a broker. Initial slow work can use an in-process job
 abstraction only when losing an unstarted task is acceptable, or a PostgreSQL-backed
 job/outbox when durability is required.
 
@@ -312,13 +312,13 @@ Tenant isolation remains an application and database-query invariant at every sc
 Domain errors are mapped to stable, non-sensitive GraphQL errors. Stack traces remain
 in protected development/operational tooling, never client responses.
 
-Phase 0 unexpected HTTP failures return a generic response with the request ID and
+Unexpected HTTP failures return a generic response with the request ID and
 CORS headers intact. Logs record the stable error type and URL path, not the
 exception text, SQL values, or query string.
 
 ## Observability
 
-Phase 0 implements structured JSON request-completion events, validated request IDs,
+The application implements structured JSON request-completion events, validated request IDs,
 path-only HTTP metadata, and correlated generic failures. The default Uvicorn access
 log is disabled because it can include raw query strings. Production telemetry is
 still planned. The target also includes:
@@ -354,11 +354,9 @@ The GitHub Actions design contains:
 - a full-history gitleaks scan.
 
 Third-party actions are pinned to immutable commit SHAs. Dependabot covers Python,
-npm, actions, and Docker sources. These jobs are configured but are not claimed as
-passed until observed on a remote GitHub Actions run. Compose configuration was
-validated locally; API development/production and web development images built, and
-the Compose stack reached healthy database, API, and web states. The remote workflow
-itself remains unverified.
+npm, actions, and Docker sources. Remote results are evaluated for every pushed
+commit rather than inferred from local success. Compose configuration, image builds,
+the healthy stack, migrations, and the development seed are also exercised locally.
 
 ## Deployment topology
 
