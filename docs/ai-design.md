@@ -1,8 +1,11 @@
 # AI design
 
-**Status: planned, not implemented.** Phase 0 contains no AI provider integration,
-prompt execution, agent, or claimed model evaluation. This document defines the
-constraints future AI work must satisfy.
+**Status: structured extraction foundation implemented; review persistence and agent
+remain planned.** The backend now has a provider-neutral structured completion port,
+deterministic mock, Ollama-compatible `/api/chat` adapter, versioned financial-note
+prompt/schema, bounded input/output handling, and an always-review-first extraction
+policy. No model output can write the ledger, no live-provider benchmark is claimed,
+and the finance agent remains unimplemented.
 
 ## Governing principle
 

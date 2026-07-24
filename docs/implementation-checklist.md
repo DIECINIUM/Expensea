@@ -232,15 +232,17 @@ canonical record with evidence, and replay does not duplicate it.
 
 ## Phase 3 — natural-language notes
 
-- [ ] Add provider-neutral structured-completion interface and mock adapter.
-- [ ] Version extraction prompts outside business services.
-- [ ] Add discriminated Pydantic schemas for supported event types.
-- [ ] Resolve relative dates from source timestamp and user timezone.
-- [ ] Add configurable, calibrated confidence policy.
+- [x] Add provider-neutral structured-completion interface and mock adapter.
+- [x] Version extraction prompts outside business services.
+- [x] Add strict Pydantic extraction schema for supported event types.
+- [ ] Resolve relative dates from source timestamp and user timezone; trusted context
+  supply and naive-date rejection are implemented, broader evaluation remains pending.
+- [x] Add configurable review confidence policy; calibration remains pending.
 - [ ] Add proposed-event persistence and review queue.
-- [ ] Add one real provider adapter behind server-only configuration.
+- [x] Add one Ollama-compatible provider adapter behind server-only configuration.
 - [ ] Record safe model/prompt/schema/latency/token/cost metadata.
-- [ ] Add adversarial prompt-injection, invalid-output, timeout, and retry tests.
+- [x] Add prompt-injection separation, invalid-output, timeout, and provider-envelope
+  tests; bounded retry tests remain pending.
 - [ ] Create labelled extraction evaluation dataset and evaluator.
 
 Acceptance: “Lent Rahul ₹2,000 yesterday” creates a traceable proposal; missing facts

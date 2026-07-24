@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 from sqlalchemy.engine import make_url
 
-from app.core.config import DEFAULT_DEV_USER_ID, AppEnvironment, Settings
+from app.core.config import DEFAULT_DEV_USER_ID, AIProvider, AppEnvironment, Settings
 
 
 @pytest.mark.parametrize(
@@ -38,6 +38,38 @@ def test_cors_origins_accept_json_or_csv(raw_value: str, expected: list[str]) ->
 def test_cors_origins_reject_non_string_json_values() -> None:
     with pytest.raises(ValueError, match="JSON array of strings"):
         Settings(_env_file=None, cors_origins='["https://app.example.com", 42]')
+
+
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "10.0.0.5:11434",
+        "ftp://models.example.test",
+        "http://user:secret@models.example.test",
+        "https://models.example.test/api",
+        "https://models.example.test?token=secret",
+    ],
+)
+def test_ai_base_url_rejects_inexact_or_credentialed_values(base_url: str) -> None:
+    with pytest.raises(ValidationError, match="AI_BASE_URL"):
+        Settings(_env_file=None, ai_base_url=base_url)
+
+
+def test_ollama_settings_are_server_only_and_typed() -> None:
+    settings = Settings(
+        _env_file=None,
+        ai_provider="ollama",
+        ai_base_url="http://10.0.0.5:11434/",
+        ai_model=" gemma4:e4b ",
+        ai_request_timeout_seconds=90,
+        ai_review_confidence_threshold=0.9,
+    )
+
+    assert settings.ai_provider is AIProvider.OLLAMA
+    assert settings.ai_base_url == "http://10.0.0.5:11434"
+    assert settings.ai_model == "gemma4:e4b"
+    assert settings.ai_request_timeout_seconds == 90
+    assert settings.ai_review_confidence_threshold == 0.9
 
 
 @pytest.mark.parametrize(

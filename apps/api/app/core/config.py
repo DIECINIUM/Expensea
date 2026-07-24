@@ -34,6 +34,13 @@ class LogLevel(StrEnum):
     CRITICAL = "CRITICAL"
 
 
+class AIProvider(StrEnum):
+    """Supported server-side structured completion providers."""
+
+    DISABLED = "disabled"
+    OLLAMA = "ollama"
+
+
 DEFAULT_DEV_USER_ID = UUID("00000000-0000-4000-8000-000000000001")
 
 
@@ -66,6 +73,13 @@ class Settings(BaseSettings):
 
     dev_auth_enabled: bool = True
     dev_user_id: UUID = DEFAULT_DEV_USER_ID
+
+    ai_provider: AIProvider = AIProvider.DISABLED
+    ai_base_url: str = "http://127.0.0.1:11434"
+    ai_model: str = Field(default="gemma4:e4b", min_length=1, max_length=120)
+    ai_request_timeout_seconds: float = Field(default=120.0, ge=1, le=300)
+    ai_max_input_chars: int = Field(default=8_000, ge=256, le=32_000)
+    ai_review_confidence_threshold: float = Field(default=0.85, ge=0, le=1)
 
     postgres_host: str = "localhost"
     postgres_port: int = Field(default=5432, ge=1, le=65535)
@@ -122,6 +136,35 @@ class Settings(BaseSettings):
             msg = "DATABASE_URL must include a host and database name"
             raise ValueError(msg)
         return value
+
+    @field_validator("ai_base_url")
+    @classmethod
+    def validate_ai_base_url(cls, value: str) -> str:
+        """Accept one exact HTTP(S) provider origin without embedded credentials."""
+        normalized = value.strip().rstrip("/")
+        parts = urlsplit(normalized)
+        is_provider_origin = (
+            parts.scheme in {"http", "https"}
+            and parts.hostname is not None
+            and parts.username is None
+            and parts.password is None
+            and parts.path in {"", "/"}
+            and not parts.query
+            and not parts.fragment
+        )
+        if not is_provider_origin:
+            msg = "AI_BASE_URL must be an exact HTTP(S) origin without credentials or paths"
+            raise ValueError(msg)
+        return normalized
+
+    @field_validator("ai_model")
+    @classmethod
+    def normalize_ai_model(cls, value: str) -> str:
+        """Reject whitespace-only or padded provider model identifiers."""
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("AI_MODEL cannot be blank")
+        return normalized
 
     @field_validator("cors_origins")
     @classmethod
