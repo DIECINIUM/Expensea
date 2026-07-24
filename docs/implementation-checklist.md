@@ -217,8 +217,9 @@ tenant-isolated, tested, and visible in the dashboard.
 
 - [x] Define the ingestion, replay, provenance, connector, AI handoff, and Google
   source acceptance semantics in `docs/phase2-ingestion.md`.
-- [ ] Add `SourceConnection`, immutable `RawEvent`, and `Evidence`.
-- [ ] Define a versioned normalized financial-event contract.
+- [x] Add `SourceConnection`, immutable-source-field `RawEvent`, separate processing
+  state, and owner-safe `Evidence`.
+- [x] Define a persisted, versioned normalized financial-event contract.
 - [ ] Define connector fetch/normalize/health interface.
 - [ ] Implement manual, CSV, and mock receipt connectors only.
 - [ ] Enforce external identity/content-hash idempotency with unique constraints.
