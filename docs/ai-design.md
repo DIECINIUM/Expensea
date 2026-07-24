@@ -1,11 +1,11 @@
 # AI design
 
-**Status: structured extraction foundation implemented; review persistence and agent
-remain planned.** The backend now has a provider-neutral structured completion port,
-deterministic mock, Ollama-compatible `/api/chat` adapter, versioned financial-note
-prompt/schema, bounded input/output handling, and an always-review-first extraction
-policy. No model output can write the ledger, no live-provider benchmark is claimed,
-and the finance agent remains unimplemented.
+**Status: the Phase 3 review-first vertical slice is implemented; evaluation and the
+finance agent remain planned.** The backend has a provider-neutral structured
+completion port, deterministic mock, Ollama-compatible `/api/chat` adapter, versioned
+financial-note prompt/schema, bounded input/output handling, persisted proposal
+metadata, locked approve/reject transitions, and a React review inbox. The configured
+provider passes an opt-in synthetic contract test, but no quality benchmark is claimed.
 
 ## Governing principle
 
@@ -55,19 +55,23 @@ flowchart TD
     Model[Provider adapter: structured completion]
     Schema[Pydantic schema validation]
     Rules[Business-rule + authorization validation]
-    Confidence{Confidence policy}
-    Auto[Eligible deterministic command]
-    Flag[Persist proposal and flag review]
-    Block[Require confirmation / reject]
+    Confidence[Deterministic confidence and missing-fact policy]
+    Flag[Persist proposal and review reasons]
+    Review{Authenticated user decision}
+    Command[Validated deterministic command]
+    Block[Reject without canonical write]
     Ledger[Canonical ledger service]
 
     Input --> Pre --> Prompt --> Model --> Schema --> Rules --> Confidence
-    Confidence -->|at or above auto threshold| Auto --> Ledger
-    Confidence -->|review band| Flag
-    Confidence -->|below minimum or missing required fact| Block
+    Confidence --> Flag --> Review
+    Review -->|approve| Command --> Ledger
+    Review -->|reject| Block
 ```
 
-Initial threshold defaults may be:
+The current implementation deliberately sends every model-derived event to review.
+`AI_REVIEW_CONFIDENCE_THRESHOLD` controls whether `LOW_CONFIDENCE` is added to the
+visible reasons; it does not authorize automatic posting. A future calibrated policy
+may introduce bands such as:
 
 ```text
 confidence >= 0.90        eligible for automatic processing
@@ -75,8 +79,9 @@ confidence >= 0.90        eligible for automatic processing
 confidence < 0.60         require explicit confirmation
 ```
 
-Thresholds are configuration, not literals scattered across services. Evaluation
-must calibrate them per task. A high self-reported model confidence cannot override a
+Thresholds are configuration, not literals scattered across services. Automatic
+processing remains disabled until a committed dataset establishes task-specific
+quality and safety bounds. A high self-reported model confidence cannot override a
 missing amount, currency, person, invalid date, ownership failure, or ambiguous
 duplicate.
 
@@ -85,14 +90,11 @@ duplicate.
 Business services depend on a small application-owned protocol:
 
 ```python
-class AIProvider(Protocol):
-    async def structured_completion(
+class StructuredCompletionProvider(Protocol):
+    async def complete(
         self,
-        *,
-        system_prompt: str,
-        user_content: str,
-        response_model: type[BaseModel],
-    ) -> BaseModel: ...
+        request: StructuredCompletionRequest,
+    ) -> StructuredCompletion: ...
 ```
 
 Adapters translate this call to OpenAI, Gemini, Ollama, or another provider. They own
@@ -104,7 +106,7 @@ the adapter boundary.
 
 ## Structured extraction contracts
 
-Separate discriminated schemas are planned for:
+The current strict event schema supports:
 
 - expense;
 - income;
@@ -118,25 +120,27 @@ Common proposal metadata includes event type, source event ID, parsed amount as 
 decimal string, currency, occurred date/time, description, confidence, missing or
 ambiguous fields, and evidence spans/references.
 
-Relative dates are resolved deterministically from:
+The model receives only these trusted date-resolution anchors:
 
 1. the source timestamp;
 2. the user's IANA timezone; and
 3. a documented resolver policy.
 
-The model may return `expected_return_period: "next month"` when a precise day is not
-supported. It must not silently turn that phrase into an invented date.
+Timezone-naive output is rejected. Broader relative-date evaluation remains pending,
+so unsupported precision must stay null rather than become an invented date.
 
 ## Prompt management
 
-Prompts will live under a dedicated `ai/prompts/` package, outside business services.
-Each material AI result records:
+Prompts live under a dedicated `ai/prompts/` package, outside business services.
+Each persisted proposal records:
 
 - prompt name and version;
 - provider and model;
 - response schema version;
 - generation timestamp; and
-- validation/review outcome.
+- validation/review outcome;
+- provider latency; and
+- input/output token counts when the provider reports them.
 
 Prompts place system policy and untrusted content in separate fields. Delimiters help
 the model parse the request but are not treated as a security boundary. Untrusted
@@ -227,15 +231,17 @@ Fallbacks distinguish “could not interpret” from “no financial event found
 
 ## Observability and privacy
 
-Record non-sensitive metadata for each call:
+Persisted proposals currently record non-sensitive metadata for successful calls:
 
 - request type and correlation ID;
 - provider, model, prompt/schema version;
-- latency, token counts, and estimated cost;
+- latency and token counts;
 - success/failure, validation failure, and retry count; and
 - confidence and eventual review outcome.
 
-Do not log full private notes, email bodies, access tokens, or arbitrary prompts.
+Estimated cost is not fabricated for the local provider; a priced provider adapter
+must add an explicit versioned pricing basis. Do not log full private notes, email
+bodies, access tokens, or arbitrary prompts.
 Sampled debugging requires explicit redaction and retention controls.
 
 ## Evaluation before rollout

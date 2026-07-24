@@ -2,10 +2,11 @@
 
 **Last updated:** 2026-07-24
 
-**Current phase:** Phase 1 complete; Phase 2 implementation started.
+**Current phase:** Phases 1 and 2 complete; Phase 3 review-first vertical slice
+implemented, with quality evaluation and retry calibration still in progress.
 
-**Rule:** implement Phase 1 through bounded vertical slices whose acceptance behavior
-is written before code and checked from actual commands.
+**Rule:** implement each phase through bounded vertical slices whose acceptance
+behavior is written before code and checked from actual commands.
 
 `[x]` means the artifact is present and reviewed in the repository. `[ ]` means it is
 not complete or has not yet been verified. Future-phase boxes are not defects in
@@ -224,7 +225,7 @@ tenant-isolated, tested, and visible in the dashboard.
 - [x] Implement manual-note and mock-receipt connectors.
 - [x] Implement fixture-tested Gmail read-only and Google Keep Takeout adapters behind
   the shared connector boundary; deployment OAuth/token storage remains Phase 8.
-- [ ] Implement the bounded CSV import connector.
+- [x] Implement the bounded CSV import connector.
 - [x] Enforce external identity/content-hash idempotency with unique constraints.
 - [x] Add explicit processing-state transitions and retry semantics.
 - [x] Persist provenance through one atomic canonical-ledger handoff.
@@ -232,6 +233,13 @@ tenant-isolated, tested, and visible in the dashboard.
 
 Acceptance: one mock event flows through raw storage and normalization to one
 canonical record with evidence, and replay does not duplicate it.
+
+### Phase 2 verification
+
+- [x] Revisions `20260724_0003` and `20260724_0004` upgrade, downgrade, and re-upgrade.
+- [x] Duplicate delivery, content-hash fallback, concurrent receipt, failure resume,
+  cross-user ownership, and atomic evidence tests pass against PostgreSQL.
+- [x] Manual, mock, CSV, Gmail, and Google Keep adapter contract tests pass.
 
 ## Phase 3 — natural-language notes
 
@@ -241,15 +249,28 @@ canonical record with evidence, and replay does not duplicate it.
 - [ ] Resolve relative dates from source timestamp and user timezone; trusted context
   supply and naive-date rejection are implemented, broader evaluation remains pending.
 - [x] Add configurable review confidence policy; calibration remains pending.
-- [ ] Add proposed-event persistence and review queue.
+- [x] Add proposed-event persistence and locked approve/reject review queue.
 - [x] Add one Ollama-compatible provider adapter behind server-only configuration.
-- [ ] Record safe model/prompt/schema/latency/token/cost metadata.
+- [x] Record safe provider/model/prompt/schema/latency/token metadata; priced-provider
+  cost accounting remains pending and is not fabricated for the local endpoint.
+- [x] Add GraphQL note submission, Keep import, proposal query, and review mutations.
+- [x] Add a React AI inbox with tags, category hints, confidence/reasons, and
+  canonical dashboard refresh after approval.
 - [x] Add prompt-injection separation, invalid-output, timeout, and provider-envelope
   tests; bounded retry tests remain pending.
+- [x] Run the opt-in synthetic live contract against the configured
+  Ollama-compatible model; this is compatibility evidence, not a quality benchmark.
 - [ ] Create labelled extraction evaluation dataset and evaluator.
 
 Acceptance: “Lent Rahul ₹2,000 yesterday” creates a traceable proposal; missing facts
 remain unknown; uncertain results require confirmation.
+
+### Current Phase 2/3 verification
+
+- [x] PostgreSQL-enabled backend suite passes: 152 tests, with the opt-in live
+  provider test skipped in the deterministic suite and passed separately.
+- [x] Frontend suite passes: 8 files and 32 tests.
+- [x] Ruff, strict mypy, ESLint, Prettier, and strict TypeScript pass.
 
 ## Phase 4 — reconciliation
 

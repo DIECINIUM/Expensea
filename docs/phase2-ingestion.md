@@ -1,6 +1,6 @@
 # Phase 2 ingestion and provenance
 
-**Status:** implementation acceptance contract
+**Status:** implemented and locally verified
 
 **Started:** 2026-07-24
 
@@ -22,6 +22,7 @@ deterministic ledger service.
 | --- | --- | --- |
 | Manual financial note | Authenticated application input | Becomes an immutable raw event before interpretation. |
 | Mock receipt | Deterministic connector fixture | Proves replay and provenance without an external dependency. |
+| CSV transactions | User-selected UTF-8 export | Strict columns, 256 KiB/1,000-row bounds, exact decimal normalization, and replayable offset cursor. |
 | Gmail receipts | Official Gmail API with read-only authorization | Fetch only likely financial messages and retain minimized content. OAuth credentials are deployment configuration, never repository data. |
 | Google Keep notes | User-provided Google Takeout export | Consumer Keep does not expose the same general-purpose OAuth path as Gmail. Managed Workspace Keep API support can be a later adapter. |
 | Google Play subscriptions | Gmail receipt and renewal evidence | The Android Publisher API is package- and purchase-token-oriented, not a consumer-wide subscription feed. |
@@ -38,7 +39,7 @@ unnecessary attachments are not persisted in ingestion metadata.
   `external:<provider-id>` when a stable provider ID exists, otherwise
   `sha256:<content-hash>`.
 - Raw event source fields and minimized payload are insert-only application data.
-  Processing state lives on the normalized record.
+  Mutable state and attempts live on a separate `RawEventProcessing` record.
 - One raw event and normalizer version produce at most one normalized event.
 - One accepted normalized event produces at most one canonical transaction.
 - Evidence and its canonical transaction commit in the same database transaction.
@@ -95,9 +96,12 @@ port. The initial real adapter targets an Ollama-compatible `/api/chat` endpoint
 server-only settings. It sends bounded source text, asks for a strict JSON schema, and
 discards any model reasoning trace.
 
-Provider timeouts, malformed output, unknown required facts, or low confidence produce a
-reviewable/failed proposal. They never create a posted transaction automatically.
-Tests use a deterministic mock provider; a live-provider contract test is opt-in.
+Provider timeouts or malformed output preserve a retryable raw event. Schema-valid
+results become persisted review proposals containing content-free provider/model,
+prompt/schema, latency, and token metadata. Unknown required facts or low confidence
+add visible review reasons. A model result never creates a canonical record
+automatically. Tests use a deterministic mock provider; a live-provider contract test
+is opt-in.
 
 ## Google authorization boundary
 
@@ -110,6 +114,24 @@ the runtime and cannot persist credentials.
 Google Keep consumer notes enter through an explicit Takeout import. The import accepts
 only supported note JSON fields, ignores attachments by default, bounds text size, and
 maps Keep labels to untrusted tag suggestions.
+
+## Implemented application workflow
+
+- `submitFinancialNote` stores an authenticated raw note and invokes structured
+  extraction.
+- `importGoogleKeepNote` parses one bounded Takeout JSON document, then uses the same
+  extraction path.
+- `financialEventProposals` returns owner-scoped proposal facts without raw note text.
+- `approveFinancialProposal` locks a pending proposal, revalidates it through
+  deterministic repositories, and links the canonical target.
+- `rejectFinancialProposal` locks and rejects it without a canonical write.
+- The React AI inbox exposes these operations, tags/category suggestions, confidence,
+  and review reasons.
+
+The Gmail fetch/minimization adapter is implemented and fixture-tested. Browser
+connection and scheduled sync remain Phase 8 because shipping them safely requires
+production authentication plus Google OAuth consent, token encryption, state/PKCE,
+revocation, and deletion behavior.
 
 ## Out of scope for this slice
 

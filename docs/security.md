@@ -1,7 +1,8 @@
 # Security and privacy
 
-**Document status:** Phase 1 threat model. The current repository has a tested
-development ledger but is not a production security claim. Controls are labelled:
+**Document status:** Phase 2/3 review-first threat model. The current repository has
+a tested development ledger, ingestion pipeline, and AI proposal workflow but is not
+a production security claim. Controls are labelled:
 
 - **Implemented** — present and covered by repository tests where noted.
 - **Configured** — represented in Compose/CI and still dependent on each run result.
@@ -231,15 +232,15 @@ application authorization and is not claimed in Phase 1.
 | Threat | Control | Status |
 | --- | --- | --- |
 | SQL injection | SQLAlchemy bound parameters; no SQL assembled from model/user text | Implemented |
-| Oversized/expensive queries | Pagination, input limits, depth/complexity limits | Implemented for Phase 1 GraphQL |
-| N+1 denial of service | Explicit projection/aggregate queries; add request-scoped DataLoader only where measured | No Phase 1 N+1 path identified |
+| Oversized/expensive queries | Pagination, note/file limits, depth/complexity limits | Implemented for current GraphQL/import paths |
+| N+1 denial of service | Explicit projection/aggregate queries; add request-scoped DataLoader only where measured | No current N+1 path identified |
 | Enumeration/IDOR | Ownership-scoped queries and non-revealing errors | Implemented and cross-tenant tested |
 | Brute force/abuse | Rate limits by identity and endpoint/risk class | Production hardening |
-| Malicious strings | Boundary validation, length limits, contextual output escaping | Phase 1 domain limits implemented |
+| Malicious strings | Boundary validation, length limits, prompt/source separation, contextual output escaping | Implemented for ledger, ingestion, and extraction paths |
 | Stack/data leakage | Generic correlated failures; no SQL parameters/query strings in logs | Implemented |
 | CORS abuse | Exact configured origins; never wildcard with credentials | Implemented |
 | GraphQL query in URL | POST-only query execution | Implemented |
-| Replay/duplicate writes | Database uniqueness and locked expected-occurrence checks | Implemented for seeded/recurring identities; general ingestion idempotency begins Phase 2 |
+| Replay/duplicate writes | Database uniqueness, content/source identity, and locked state transitions | Implemented for ingestion, proposals, seeds, and recurring occurrences |
 
 Introspection and the GraphQL IDE are environment-specific production decisions, not
 a substitute for authorization. HTTPS termination is mandatory outside local
@@ -248,7 +249,10 @@ identity or authority.
 
 ## Connector and OAuth security
 
-Real connectors begin only after the local ingestion model is reliable.
+Production account connectors begin only after the local ingestion model is reliable.
+The current Gmail adapter accepts an ephemeral read-only token/client only and does
+not expose a browser OAuth flow or persist credentials. Google Keep uses an explicit
+user-selected Takeout export.
 
 - Use official APIs, OAuth, exports, and user-granted access.
 - Request the narrowest scopes and explain them at consent time.
@@ -367,8 +371,8 @@ private-content capture. Retention and operator access are explicit.
 | --- | --- | --- |
 | Phase 0 | Complete | Settings/CORS/transport/error/logging/resource tests; web-to-API smoke; dependency audits; secret, migration, Compose, and container CI contracts |
 | Phase 1 | Complete locally | Cross-tenant CRUD, exact-money/state invariants, malformed GraphQL, complexity limits, settlement locking, and recurring replay tests |
-| Phase 2 | Planned | Duplicate/replay tests, source minimization, connector failure tests |
-| Phase 3 | Planned | Adversarial prompt-injection corpus, schema fuzzing, provider outage tests |
+| Phase 2 | Complete locally | Duplicate/concurrent replay, ownership, source minimization, malformed connector content, retry, and provenance tests |
+| Phase 3 | Core slice complete locally | Prompt-injection separation, schema/provider failure, proposal ownership/state, no-direct-write, GraphQL, and UI review tests; labelled quality evaluation remains pending |
 | Phase 4 | Planned | False-merge evaluation and evidence-retention tests |
 | Phase 7 | Planned | Agent tool allowlist, cross-tenant attempts, write/tool injection, grounding |
 | Phase 8 | Planned | OAuth state/PKCE, token encryption/rotation, scope and deletion review |

@@ -2,8 +2,9 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-23
-- **Implementation:** Design for Phase 2; no real connector is implemented in Phase
-  0.
+- **Implementation:** Phase 2 contract, registry, raw-event pipeline, mock/manual/CSV
+  adapters, fixture-tested Gmail adapter, and Google Keep Takeout import are
+  implemented. Production Gmail OAuth remains Phase 8.
 
 ## Context
 

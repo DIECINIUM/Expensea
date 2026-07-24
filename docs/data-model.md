@@ -1,12 +1,13 @@
-# Phase 1 data model
+# SpendGraph data model
 
-**Status: implemented.** Alembic revision `20260724_0002` and the SQLAlchemy models
-are the executable source of truth. This document explains that deployed contract
-and must change with future migrations.
+**Status: Phases 1–3 persistence implemented.** Alembic revisions
+`20260724_0002`, `20260724_0003`, and `20260724_0004` plus the SQLAlchemy models are
+the executable source of truth. This document explains that deployed contract and
+must change with future migrations.
 
 ## Scope
 
-Phase 1 covers manually managed:
+The canonical ledger covers manually managed:
 
 - users;
 - merchants and categories;
@@ -16,9 +17,44 @@ Phase 1 covers manually managed:
 - obligation settlements; and
 - recurring payments.
 
-`SourceConnection`, immutable `RawEvent`, `Evidence`, and ingestion idempotency
-arrive in Phase 2. `UserCorrection`, embeddings, and `AIInsight` arrive with their
-later phases. No AI-derived field is needed for Phase 1.
+Phase 2/3 add:
+
+- user-owned source connections;
+- immutable minimized raw events and separate mutable processing state;
+- versioned normalized financial events;
+- evidence links to canonical transactions; and
+- schema-valid, review-first AI proposals with canonical target provenance.
+
+`UserCorrection`, embeddings, reconciliation candidates, and `AIInsight` remain in
+their later phases.
+
+## Ingestion and proposal relationships
+
+```mermaid
+erDiagram
+    USER ||--o{ SOURCE_CONNECTION : owns
+    SOURCE_CONNECTION ||--o{ RAW_EVENT : receives
+    RAW_EVENT ||--|| RAW_EVENT_PROCESSING : tracks
+    RAW_EVENT ||--o{ NORMALIZED_FINANCIAL_EVENT : normalizes
+    RAW_EVENT ||--o{ FINANCIAL_EVENT_PROPOSAL : proposes
+    RAW_EVENT ||--o| EVIDENCE : supports
+    NORMALIZED_FINANCIAL_EVENT ||--o| EVIDENCE : explains
+    TRANSACTION ||--o| EVIDENCE : derives_from
+    FINANCIAL_EVENT_PROPOSAL }o--o| TRANSACTION : approves_to
+    FINANCIAL_EVENT_PROPOSAL }o--o| RECEIVABLE : approves_to
+    FINANCIAL_EVENT_PROPOSAL }o--o| PAYABLE : approves_to
+    FINANCIAL_EVENT_PROPOSAL }o--o| RECURRING_PAYMENT : approves_to
+```
+
+Important database invariants include:
+
+- one source connection per `(user, connector type, connection key)`;
+- one raw event per deterministic source identity;
+- one normalized record per raw event and normalizer/schema version;
+- one proposal per raw event and prompt/schema version;
+- at most one canonical target on a proposal;
+- an approved proposal must have exactly one canonical target; and
+- ownership-aware foreign keys prevent cross-user provenance links.
 
 ## Data conventions
 
@@ -38,7 +74,7 @@ later phases. No AI-derived field is needed for Phase 1.
 8. **Enums:** database checks and typed application enums use the values documented
    below and must evolve together.
 
-## Relationship model
+## Canonical ledger relationship model
 
 ```mermaid
 erDiagram
@@ -327,11 +363,8 @@ justify additional indexes.
 
 ## Deferred relationships
 
-Later phases add, without weakening the Phase 1 ledger:
+Later phases add, without weakening the implemented ledger and provenance model:
 
-- `SourceConnection → RawEvent → Evidence → canonical entity` for provenance;
-- processing-state and content-hash uniqueness for retry safety;
 - reconciliation candidates and canonical-transaction relationships;
 - `UserCorrection` for personalized classification;
-- prompt/model/version metadata for AI-derived proposals; and
 - `AIInsight` whose supporting data references deterministic analytical results.

@@ -1,8 +1,10 @@
 # Architecture
 
-**Document status:** Phase 1 architecture. The deterministic ledger, GraphQL API,
-PostgreSQL schema, development bootstrap, and live React dashboard are implemented.
-Connector, AI, reconciliation, and agent components remain planned.
+**Document status:** Phase 2 complete with a review-first Phase 3 vertical slice. The
+deterministic ledger, replay-safe ingestion/provenance model, connector contract,
+structured AI extraction, proposal review workflow, GraphQL API, and React dashboard
+are implemented. Reconciliation, categorization, the finance agent, and production
+OAuth remain planned.
 
 ## Goals
 
@@ -25,8 +27,8 @@ SpendGraph AI must:
 | Canonical ledger and deterministic summaries | 1 | Implemented and test covered |
 | People, obligations, settlements, and recurring schedules | 1 | Implemented and test covered |
 | Live ledger dashboard and manual management flows | 1 | Implemented and test covered |
-| Connector contract, raw events, evidence, idempotent ingestion | 2 | Planned |
-| AI extraction and confidence review | 3 | Planned |
+| Connector contract, raw events, evidence, idempotent ingestion | 2 | Implemented and test covered |
+| AI extraction, persisted proposals, and explicit review | 3 | Core vertical slice implemented; evaluation pending |
 | Duplicate reconciliation | 4 | Planned |
 | Personal categorization/correction memory | 5 | Planned |
 | Analytics and deterministic insights | 6 | Planned |
@@ -34,29 +36,34 @@ SpendGraph AI must:
 | Real OAuth connector | 8 | Planned |
 | Durable queue/live processing UX | 9+ | Planned |
 
-## Implemented Phase 1 runtime
+## Implemented runtime
 
 ```mermaid
 flowchart LR
-    Browser["Browser<br/>React Phase 1 dashboard"]
-    Apollo["Apollo Client<br/>typed ledger operations"]
+    Browser["Browser<br/>React ledger + AI review inbox"]
+    Apollo["Apollo Client<br/>typed ledger/proposal operations"]
     Vite["Vite dev server<br/>same-origin /graphql proxy"]
     Middleware["FastAPI middleware<br/>request ID, safe logs, CORS/errors"]
     GraphQL["Strawberry GraphQL<br/>POST only"]
-    Services["Owner-scoped services<br/>transactions + obligations + recurring"]
+    Services["Owner-scoped services<br/>ledger + ingestion + proposals"]
+    Connectors["Connector contract<br/>manual · mock · CSV · Gmail · Keep"]
+    AI["Structured AI port<br/>mock / Ollama-compatible"]
     Repositories["SQLAlchemy repositories"]
-    PG[(PostgreSQL 17<br/>Phase 1 ledger)]
+    PG[(PostgreSQL 17<br/>ledger + provenance + proposals)]
     Bootstrap["Alembic + idempotent<br/>development seed"]
 
     Browser --> Apollo -->|POST /graphql| Vite
     Vite -->|proxy to API| Middleware --> GraphQL --> Services
+    Connectors --> Services
+    Services --> AI
     Services --> Repositories --> PG
     Bootstrap --> PG
 ```
 
-The web queries exact ledger values, renders explicit loading/error/empty states, and
-refetches after successful mutations. The API also retains the process-only REST and
-GraphQL health contracts.
+The web queries exact ledger values and pending proposals, renders explicit
+loading/error/empty states, and refetches after successful mutations. AI output is
+always persisted as an untrusted proposal; only an explicit authenticated approval
+invokes deterministic canonical repositories.
 
 Local development uses `/graphql` as a browser-relative URL. The Vite proxy targets
 the configured API, avoiding a browser cross-origin hop while preserving a direct
@@ -113,8 +120,8 @@ flowchart TB
     end
 
     DB[(PostgreSQL)]
-    Provider[External AI provider · planned]
-    Sources[Authorized source APIs/exports · planned]
+    Provider[Configured AI provider]
+    Sources[Authorized source APIs/exports]
     Worker[Durable worker · later]
 
     Browser -->|typed GraphQL| HTTP --> GraphQL --> UseCases
@@ -267,7 +274,7 @@ so different screens cannot calculate conflicting totals.
 
 ## Background work evolution
 
-Phase 1 does not need a broker. Initial slow work can use an in-process job
+The current synchronous local slice does not need a broker. Initial slow work can use an in-process job
 abstraction only when losing an unstarted task is acceptable, or a PostgreSQL-backed
 job/outbox when durability is required.
 
@@ -318,10 +325,11 @@ exception text, SQL values, or query string.
 
 ## Observability
 
-The application implements structured JSON request-completion events, validated request IDs,
-path-only HTTP metadata, and correlated generic failures. The default Uvicorn access
-log is disabled because it can include raw query strings. Production telemetry is
-still planned. The target also includes:
+The application implements structured JSON request-completion events, validated
+request IDs, path-only HTTP metadata, correlated generic failures, and persisted
+proposal provider/model/prompt/schema/latency/token metadata. The default Uvicorn
+access log is disabled because it can include raw query strings. Production exporters
+and dashboards are still planned. The target also includes:
 
 - request and correlation IDs propagated into background jobs;
 - structured event names and non-sensitive entity IDs;
