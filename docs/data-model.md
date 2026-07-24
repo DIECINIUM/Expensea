@@ -1,9 +1,9 @@
 # SpendGraph data model
 
-**Status: Phases 1–3 persistence implemented.** Alembic revisions
-`20260724_0002`, `20260724_0003`, and `20260724_0004` plus the SQLAlchemy models are
-the executable source of truth. This document explains that deployed contract and
-must change with future migrations.
+**Status: Phases 1–4 persistence implemented.** Alembic revisions
+`20260724_0002` through `20260724_0006` plus the SQLAlchemy models are the executable
+source of truth. This document explains that deployed contract and must change with
+future migrations.
 
 ## Scope
 
@@ -25,8 +25,14 @@ Phase 2/3 add:
 - evidence links to canonical transactions; and
 - schema-valid, review-first AI proposals with canonical target provenance.
 
-`UserCorrection`, embeddings, reconciliation candidates, and `AIInsight` remain in
-their later phases.
+Phase 4 adds:
+
+- bounded typed payment identifiers on normalized events;
+- one explainable reconciliation case per postable normalized transaction event;
+- candidate/resulting canonical transaction references; and
+- append-only reconciliation action history.
+
+`UserCorrection`, embeddings, and `AIInsight` remain in their later phases.
 
 ## Ingestion and proposal relationships
 
@@ -44,6 +50,10 @@ erDiagram
     FINANCIAL_EVENT_PROPOSAL }o--o| RECEIVABLE : approves_to
     FINANCIAL_EVENT_PROPOSAL }o--o| PAYABLE : approves_to
     FINANCIAL_EVENT_PROPOSAL }o--o| RECURRING_PAYMENT : approves_to
+    NORMALIZED_FINANCIAL_EVENT ||--|| RECONCILIATION_CASE : evaluates
+    RECONCILIATION_CASE ||--o{ RECONCILIATION_ACTION : records
+    RECONCILIATION_CASE }o--o| TRANSACTION : candidate
+    RECONCILIATION_CASE }o--o| TRANSACTION : results_in
 ```
 
 Important database invariants include:
@@ -52,9 +62,12 @@ Important database invariants include:
 - one raw event per deterministic source identity;
 - one normalized record per raw event and normalizer/schema version;
 - one proposal per raw event and prompt/schema version;
+- one reconciliation case per normalized event;
 - at most one canonical target on a proposal;
 - an approved proposal must have exactly one canonical target; and
-- ownership-aware foreign keys prevent cross-user provenance links.
+- reconciliation status/candidate/result combinations are database-checked; and
+- ownership-aware foreign keys prevent cross-user provenance or reconciliation
+  links.
 
 ## Data conventions
 
@@ -357,14 +370,18 @@ The migration creates the following query-driven indexes:
 | `receivable` / `payable` | `(user_id, status, due_date)` | Open and overdue obligations |
 | `obligation_settlement` | obligation foreign key | Outstanding balance calculation |
 | `recurring_payment` | `(user_id, status, next_expected_date)` | Upcoming payments |
+| `normalized_financial_event` | GIN `(payment_identifiers)` | Exact typed-ID candidate lookup |
+| `reconciliation_case` | `(user_id, status, created_at)` | Owner review inbox |
+| `reconciliation_case` | `(user_id, candidate_transaction_id)` | Candidate audit lookup |
+| `reconciliation_action` | `(case_id, created_at)` | Ordered decision history |
 
 Every index has write/storage cost. Query plans and production-like data should
 justify additional indexes.
 
 ## Deferred relationships
 
-Later phases add, without weakening the implemented ledger and provenance model:
+Later phases add, without weakening the implemented ledger, provenance, and
+reconciliation model:
 
-- reconciliation candidates and canonical-transaction relationships;
 - `UserCorrection` for personalized classification;
 - `AIInsight` whose supporting data references deterministic analytical results.

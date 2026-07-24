@@ -1,10 +1,9 @@
 # Architecture
 
-**Document status:** Phase 2 complete with a review-first Phase 3 vertical slice. The
-deterministic ledger, replay-safe ingestion/provenance model, connector contract,
-structured AI extraction, proposal review workflow, GraphQL API, and React dashboard
-are implemented. Reconciliation, categorization, the finance agent, and production
-OAuth remain planned.
+**Document status:** Phases 1–4 are implemented. The deterministic ledger,
+replay-safe ingestion/provenance model, connector contract, structured AI extraction,
+proposal review, duplicate reconciliation, GraphQL API, and React dashboard are
+implemented. Categorization, the finance agent, and production OAuth remain planned.
 
 ## Goals
 
@@ -28,8 +27,8 @@ SpendGraph AI must:
 | People, obligations, settlements, and recurring schedules | 1 | Implemented and test covered |
 | Live ledger dashboard and manual management flows | 1 | Implemented and test covered |
 | Connector contract, raw events, evidence, idempotent ingestion | 2 | Implemented and test covered |
-| AI extraction, persisted proposals, and explicit review | 3 | Core vertical slice implemented; evaluation pending |
-| Duplicate reconciliation | 4 | Planned |
+| AI extraction, persisted proposals, and explicit review | 3 | Implemented with synthetic evaluation |
+| Duplicate reconciliation | 4 | Implemented with owner review and synthetic evaluation |
 | Personal categorization/correction memory | 5 | Planned |
 | Analytics and deterministic insights | 6 | Planned |
 | Read-only finance agent | 7 | Planned |
@@ -40,16 +39,16 @@ SpendGraph AI must:
 
 ```mermaid
 flowchart LR
-    Browser["Browser<br/>React ledger + AI review inbox"]
-    Apollo["Apollo Client<br/>typed ledger/proposal operations"]
+    Browser["Browser<br/>React ledger + AI / duplicate review"]
+    Apollo["Apollo Client<br/>typed ledger/proposal/reconciliation operations"]
     Vite["Vite dev server<br/>same-origin /graphql proxy"]
     Middleware["FastAPI middleware<br/>request ID, safe logs, CORS/errors"]
     GraphQL["Strawberry GraphQL<br/>POST only"]
-    Services["Owner-scoped services<br/>ledger + ingestion + proposals"]
+    Services["Owner-scoped services<br/>ledger + ingestion + proposals + reconciliation"]
     Connectors["Connector contract<br/>manual · mock · CSV · Gmail · Keep"]
     AI["Structured AI port<br/>mock / Ollama-compatible"]
     Repositories["SQLAlchemy repositories"]
-    PG[(PostgreSQL 17<br/>ledger + provenance + proposals)]
+    PG[(PostgreSQL 17<br/>ledger + provenance + proposals + audit)]
     Bootstrap["Alembic + idempotent<br/>development seed"]
 
     Browser --> Apollo -->|POST /graphql| Vite
@@ -60,10 +59,12 @@ flowchart LR
     Bootstrap --> PG
 ```
 
-The web queries exact ledger values and pending proposals, renders explicit
-loading/error/empty states, and refetches after successful mutations. AI output is
-always persisted as an untrusted proposal; only an explicit authenticated approval
-invokes deterministic canonical repositories.
+The web queries exact ledger values, pending proposals, and reconciliation cases,
+renders explicit loading/error/empty states, and refetches after successful
+mutations. AI output is always persisted as an untrusted proposal; only an explicit
+authenticated approval invokes deterministic canonical repositories. Approved
+transaction proposals and connector transactions pass through the same deterministic
+reconciliation coordinator.
 
 Local development uses `/graphql` as a browser-relative URL. The Vite proxy targets
 the configured API, avoiding a browser cross-origin hop while preserving a direct
@@ -182,7 +183,7 @@ explicit operator decision; routine setup and `make stop` never delete the volum
 | `ingestion` | Raw-event identity, processing state, retries | Interpreting arbitrary text |
 | `ai` | Provider ports, prompts, schemas, model telemetry | Arithmetic, authorization, direct persistence |
 | `ledger` | Canonical transactions and financial invariants | Source fetching |
-| `reconciliation` | Candidate search, scoring, merge proposals | Destroying evidence |
+| `reconciliation` | Owner-scoped candidates, scoring, merge/review/new decisions, unmerge audit | Destroying evidence or using model judgement |
 | `categorization` | Layered category prediction and corrections | Financial totals |
 | `insights` | Deterministic signals and grounded explanations | Unsupported claims |
 | `security` | Authentication context, ownership policy, token handling | Domain-specific calculations |
@@ -191,8 +192,8 @@ explicit operator decision; routine setup and `make stop` never delete the volum
 | `workers` | Background execution and retry policy | Reimplementing services |
 | `observability` | IDs, structured metadata, metrics/traces | Private-content logging |
 
-These are conceptual boundaries. A folder should be introduced when its phase begins,
-not created merely to mirror this table.
+These are conceptual boundaries. A folder is introduced when its phase begins, not
+merely to mirror this table.
 
 ## Ingestion flow
 
@@ -217,13 +218,17 @@ sequenceDiagram
             X-->>I: Untrusted structured proposal
         end
         I->>I: Schema and business-rule validation
-        alt confidence or ambiguity requires review
-            I->>DB: needs_review + proposal + evidence
+        alt extraction confidence/schema requires review
+            I->>DB: needs_review + proposal; no canonical evidence link
         else eligible for processing
             I->>R: Validated candidate
             R-->>I: merge / possible_duplicate / new + reasons
-            I->>L: Deterministic command
-            L->>DB: Atomic ledger write + evidence link
+            alt possible duplicate
+                R->>DB: pending case; no transaction or evidence link
+            else merge or new
+                I->>L: Deterministic command
+                L->>DB: Atomic ledger write/evidence + reconciliation audit
+            end
         end
     end
 ```
@@ -268,7 +273,8 @@ so different screens cannot calculate conflicting totals.
 - `NUMERIC` stores money; binary floating point is prohibited.
 - Processing status changes use an explicit state machine.
 - Reconciliation prefers a false negative over a destructive false merge. Ambiguous
-  candidates enter review and retain all source evidence.
+  candidates enter review, retain the raw/normalized source, and defer their
+  canonical evidence link until the owner decides.
 - Cross-currency totals are not produced without a separately sourced, timestamped
   conversion policy.
 

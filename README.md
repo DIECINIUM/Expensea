@@ -6,8 +6,8 @@ SpendGraph AI is a deterministic personal-finance ledger built around one rule:
 
 ## Project status
 
-**Phases 1–3 are implemented, and Phase 4 reconciliation is the active
-development phase.** The repository now contains:
+**Phases 1–4 are implemented; Phase 5 categorization is next.** The repository now
+contains:
 
 - exact-decimal transactions with merchants and categories;
 - per-currency monthly, category, and merchant summaries;
@@ -20,17 +20,22 @@ development phase.** The repository now contains:
   boundary;
 - persisted proposals with model/prompt metadata and explicit approve/reject
   transitions;
+- deterministic owner-scoped duplicate scoring with merge/review/new decisions,
+  preserved evidence, append-only audit, and safe unmerge;
 - a dashboard AI inbox with informal-note input, Keep JSON import, tags, category
   suggestions, review reasons, and canonical-ledger refresh;
+- a dashboard duplicate-review inbox with scores, reason codes, merge,
+  keep-separate, and undo actions;
 - an owner-scoped Strawberry GraphQL API;
 - a live React/Apollo dashboard with mutation-and-refresh flows; and
 - reversible PostgreSQL migrations plus an idempotent development seed.
 
 AI output never posts itself. It remains an untrusted proposal until an authenticated
-user approves it and deterministic services revalidate and create the canonical
-transaction, obligation, or recurring payment. Reconciliation, personalized
-categorization, the read-only finance agent, and production Gmail OAuth remain later
-phases.
+user approves it and deterministic services revalidate the canonical transaction,
+obligation, or recurring payment. Transaction approvals pass through reconciliation;
+ambiguous matches require a second explicit merge or keep-separate decision.
+Personalized categorization, the read-only finance agent, and production Gmail OAuth
+remain later phases.
 
 ## Run it with Docker
 
@@ -125,6 +130,29 @@ financial messages, but account connection is deliberately unavailable until sec
 OAuth state/PKCE, encrypted token storage, revocation, and deployment credentials
 are implemented in Phase 8.
 
+## Configure reconciliation
+
+Repository-safe defaults use a 24-hour candidate window, a 20-candidate cap, a
+`0.70` review threshold, and a `0.92` automatic-merge threshold. Optional `.env`
+overrides are:
+
+```dotenv
+RECONCILIATION_CANDIDATE_WINDOW_MINUTES=1440
+RECONCILIATION_MAX_CANDIDATES=20
+RECONCILIATION_POSSIBLE_DUPLICATE_THRESHOLD=0.70
+RECONCILIATION_AUTO_MERGE_THRESHOLD=0.92
+RECONCILIATION_AMOUNT_WEIGHT=0.35
+RECONCILIATION_TIME_WEIGHT=0.25
+RECONCILIATION_MERCHANT_WEIGHT=0.20
+RECONCILIATION_DESCRIPTION_WEIGHT=0.20
+```
+
+Weights must total exactly `1.0`, and the review threshold must remain below the
+automatic-merge threshold. Exact typed references such as `upi:...`,
+`bank_ref:...`, or `card_auth:...` can identify the same payment outside the time
+window, but they never override owner, amount, currency, type, or posted-status
+checks. Reconciliation never uses an LLM.
+
 ## What migrations do
 
 A migration is a versioned database-schema change. In this project Alembic
@@ -214,8 +242,23 @@ user/password/name later does not rewrite an existing database.
 - Model reasoning traces, raw OAuth tokens, full Gmail addresses, and attachments are
   not persisted.
 
+### Duplicate reconciliation
+
+- Candidate lookup is owner-scoped, bounded, indexed, and restricted to compatible
+  posted transactions with exact decimal amount and currency.
+- Deterministic amount, time, merchant, and description signals return
+  `merge`, `possible_duplicate`, or `new_transaction` with versioned reason codes.
+- Uncertain matches create neither a transaction nor an evidence link until the
+  owner chooses Merge or Keep separate.
+- Automatic and user merges preserve one evidence row per source representation.
+- Undo merge creates a separate transaction, repoints only that source's evidence,
+  and retains the original candidate and append-only action history.
+- Per-user PostgreSQL advisory locks prevent concurrent source deliveries from
+  independently creating the same canonical transaction.
+
 See [Phase 1 ledger](docs/phase1-ledger.md),
-[Phase 2 ingestion](docs/phase2-ingestion.md), [AI design](docs/ai-design.md), and
+[Phase 2 ingestion](docs/phase2-ingestion.md), [AI design](docs/ai-design.md),
+[Phase 4 reconciliation](docs/phase4-reconciliation.md), and
 [Data model](docs/data-model.md) for the complete contract.
 
 ## Architecture
@@ -224,7 +267,7 @@ See [Phase 1 ledger](docs/phase1-ledger.md),
 React dashboard
   → Apollo POST /graphql through the Vite same-origin proxy
     → FastAPI / Strawberry GraphQL delivery adapters
-      → owner-scoped ledger / ingestion / proposal services
+      → owner-scoped ledger / ingestion / proposal / reconciliation services
         → connector and schema-constrained AI ports
           → repositories and deterministic calculations
             → PostgreSQL
@@ -252,7 +295,10 @@ The current API includes:
   settlements, recurring status transitions, and recording occurrences;
 - pending financial-event proposals;
 - manual financial-note and Google Keep note extraction; and
-- locked proposal approval/rejection with typed client-safe errors.
+- locked proposal approval/rejection with typed client-safe errors;
+- reconciliation cases with score, reasons, source/candidate comparison, and action
+  history; and
+- typed merge, keep-separate, and unmerge mutations.
 
 GraphiQL is available in validated debug environments at the GraphQL endpoint.
 
@@ -275,6 +321,7 @@ GraphiQL is available in validated debug environments at the GraphQL endpoint.
 | Build the web production bundle | `make build` |
 | Run dependency audits | `make audit` |
 | Evaluate AI extraction on labelled synthetic notes | `make eval-extraction` |
+| Evaluate duplicate scoring on labelled synthetic pairs | `make eval-reconciliation` |
 | Run the aggregate local gate | `make check` |
 
 Local, non-container processes require Python 3.12+, Node.js 24+, and `make setup`.
@@ -291,12 +338,15 @@ make dev-web
 
 The latest local verification includes:
 
-- 152 PostgreSQL-enabled backend tests plus one separately executed opt-in live AI
-  contract test against the configured provider;
+- 197 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
+  from the deterministic suite;
 - strict mypy, Ruff lint, and Ruff formatting checks;
-- 32 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
+- 35 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
   build;
 - Alembic upgrade/downgrade/re-upgrade coverage;
+- a 24-pair reconciliation benchmark reporting automatic-merge precision `1.0000`,
+  recall `0.5882`, F1 `0.7407`, review rate `0.4167`, zero false merges, and zero
+  false-new decisions on synthetic fixtures;
 - Compose configuration validation; and
 - migration and idempotent seeding from a separate empty Docker volume.
 
@@ -321,7 +371,7 @@ the remote checks for a pushed commit.
 │   ├── phase2-ingestion.md
 │   ├── security.md
 │   └── implementation-checklist.md
-├── evals/                    # Later AI/reconciliation evaluation fixtures
+├── evals/                    # Versioned extraction/reconciliation evaluation fixtures
 ├── packages/shared/          # Future shared/generated contracts
 ├── scripts/
 ├── docker-compose.yml
@@ -338,7 +388,7 @@ the remote checks for a pushed commit.
 | 1 | Deterministic ledger, obligations, recurring payments, live dashboard | **Complete** |
 | 2 | Raw events, evidence, connector contract, replay-safe ingestion | **Complete** |
 | 3 | Structured natural-language extraction and review | **Complete review-first slice with synthetic evaluation harness** |
-| 4 | Duplicate reconciliation | In development |
+| 4 | Duplicate reconciliation | **Complete with owner review and synthetic evaluation** |
 | 5 | Personalized categorization and correction memory | Planned |
 | 6 | Extended deterministic analytics and grounded explanations | Planned |
 | 7 | Read-only finance agent over typed service tools | Planned |

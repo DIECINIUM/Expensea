@@ -2,8 +2,8 @@
 
 **Last updated:** 2026-07-24
 
-**Current phase:** Phases 1–3 are implemented through a review-first vertical slice
-and executable synthetic evaluation; Phase 4 reconciliation is the active phase.
+**Current phase:** Phases 1–4 are implemented through review-first AI extraction and
+deterministic, owner-reviewable reconciliation. Phase 5 categorization is next.
 
 **Rule:** implement each phase through bounded vertical slices whose acceptance
 behavior is written before code and checked from actual commands.
@@ -276,16 +276,44 @@ remain unknown; uncertain results require confirmation.
 
 ## Phase 4 — reconciliation
 
-- [ ] Implement exact-identity and candidate lookup.
-- [ ] Implement configurable explainable scoring signals.
-- [ ] Return `merge`, `possible_duplicate`, or `new_transaction` with reasons.
-- [ ] Preserve all evidence after a canonical merge.
-- [ ] Add review flow and safe merge/unmerge audit behavior.
-- [ ] Build labelled duplicate/non-duplicate dataset.
-- [ ] Measure precision, recall, F1, and false-merge slices.
+- [x] Implement exact typed-payment-identity and bounded candidate lookup.
+- [x] Scope candidates to owner, posted status, exact money/type, and time or ID
+  overlap; serialize owner writes with a PostgreSQL advisory lock.
+- [x] Implement configurable amount, time, merchant, and description scoring.
+- [x] Return `merge`, `possible_duplicate`, or `new_transaction` with versioned
+  reasons.
+- [x] Preserve one evidence row for every source after a canonical merge.
+- [x] Add owner-scoped GraphQL review flow and safe merge/keep-separate/unmerge
+  behavior.
+- [x] Retain append-only decision actions and previous/resulting transaction IDs.
+- [x] Route ambiguous AI approvals into `reconciliation_review` and complete the
+  proposal only after the owner decides.
+- [x] Add dashboard duplicate review with scores, reasons, typed actions, and undo.
+- [x] Build a 24-pair labelled duplicate/non-duplicate dataset and pure evaluator.
+- [x] Measure precision, recall, F1, review rate, false merges, false-new decisions,
+  and signal/time slices.
 
 Acceptance: repeated representations do not inflate spending; ambiguous cases are not
 silently merged.
+
+### Phase 4 verification
+
+- [x] Revision `20260724_0006` upgrades, downgrades to `20260724_0005`, and
+  re-upgrades against PostgreSQL.
+- [x] PostgreSQL tests prove automatic merge, ambiguous review, keep-separate,
+  unmerge, concurrent delivery, exact identifiers outside the time window, AI
+  proposal completion, evidence preservation, and cross-user isolation.
+- [x] Owner-safe GraphQL success, validation, not-found, and stale-conflict paths
+  pass.
+- [x] The PostgreSQL-enabled backend suite passes: 197 tests, with the opt-in live
+  provider contract skipped from the deterministic suite.
+- [x] Ruff and strict mypy pass across 93 application source files.
+- [x] Frontend ESLint, Prettier, strict TypeScript, 35 tests, and production build
+  pass.
+- [x] The 24-pair synthetic evaluation routes every labelled case as expected and
+  reports automatic-merge precision `1.0000`, recall `0.5882`, F1 `0.7407`, review
+  rate `0.4167`, zero false merges, and zero false-new decisions. These values are
+  regression evidence, not production calibration.
 
 ## Phase 5 — categorization and correction memory
 

@@ -1,8 +1,9 @@
 # Security and privacy
 
-**Document status:** Phase 2/3 review-first threat model. The current repository has
-a tested development ledger, ingestion pipeline, and AI proposal workflow but is not
-a production security claim. Controls are labelled:
+**Document status:** Phase 4 review-first threat model. The current repository has a
+tested development ledger, ingestion pipeline, AI proposal workflow, and
+deterministic duplicate reconciliation, but it is not a production security claim.
+Controls are labelled:
 
 - **Implemented** — present and covered by repository tests where noted.
 - **Configured** — represented in Compose/CI and still dependent on each run result.
@@ -372,8 +373,8 @@ private-content capture. Retention and operator access are explicit.
 | Phase 0 | Complete | Settings/CORS/transport/error/logging/resource tests; web-to-API smoke; dependency audits; secret, migration, Compose, and container CI contracts |
 | Phase 1 | Complete locally | Cross-tenant CRUD, exact-money/state invariants, malformed GraphQL, complexity limits, settlement locking, and recurring replay tests |
 | Phase 2 | Complete locally | Duplicate/concurrent replay, ownership, source minimization, malformed connector content, retry, and provenance tests |
-| Phase 3 | Core slice complete locally | Prompt-injection separation, schema/provider failure, proposal ownership/state, no-direct-write, GraphQL, and UI review tests; labelled quality evaluation remains pending |
-| Phase 4 | Planned | False-merge evaluation and evidence-retention tests |
+| Phase 3 | Complete locally | Prompt-injection separation, schema/provider failure, proposal ownership/state, no-direct-write, GraphQL/UI review, and labelled extraction evaluation |
+| Phase 4 | Complete locally | Owner-scoped candidates, amount/currency/type guards, concurrent writes, false-merge evaluation, evidence retention, audit actions, and safe unmerge |
 | Phase 7 | Planned | Agent tool allowlist, cross-tenant attempts, write/tool injection, grounding |
 | Phase 8 | Planned | OAuth state/PKCE, token encryption/rotation, scope and deletion review |
 | Production | Planned | Threat-model update, backup restore, rate/load abuse, incident runbook |
