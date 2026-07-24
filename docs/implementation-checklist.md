@@ -221,7 +221,10 @@ tenant-isolated, tested, and visible in the dashboard.
   state, and owner-safe `Evidence`.
 - [x] Define a persisted, versioned normalized financial-event contract.
 - [x] Define connector fetch/normalize/health interface and explicit registry.
-- [ ] Implement manual, CSV, and mock receipt connectors only.
+- [x] Implement manual-note and mock-receipt connectors.
+- [x] Implement fixture-tested Gmail read-only and Google Keep Takeout adapters behind
+  the shared connector boundary; deployment OAuth/token storage remains Phase 8.
+- [ ] Implement the bounded CSV import connector.
 - [x] Enforce external identity/content-hash idempotency with unique constraints.
 - [x] Add explicit processing-state transitions and retry semantics.
 - [x] Persist provenance through one atomic canonical-ledger handoff.
