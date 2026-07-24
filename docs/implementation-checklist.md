@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-24
 
-**Current phase:** Phase 1 complete; Phase 2 is the next planned phase.
+**Current phase:** Phase 1 complete; Phase 2 implementation started.
 
 **Rule:** implement Phase 1 through bounded vertical slices whose acceptance behavior
 is written before code and checked from actual commands.
@@ -215,6 +215,8 @@ tenant-isolated, tested, and visible in the dashboard.
 
 ## Phase 2 — unified ingestion and provenance
 
+- [x] Define the ingestion, replay, provenance, connector, AI handoff, and Google
+  source acceptance semantics in `docs/phase2-ingestion.md`.
 - [ ] Add `SourceConnection`, immutable `RawEvent`, and `Evidence`.
 - [ ] Define a versioned normalized financial-event contract.
 - [ ] Define connector fetch/normalize/health interface.
