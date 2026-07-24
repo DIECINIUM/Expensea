@@ -62,6 +62,36 @@ async def test_informal_receivable_becomes_a_reviewable_structured_proposal() ->
 
 
 @pytest.mark.asyncio
+async def test_phase_three_acceptance_resolves_yesterday_from_trusted_context() -> None:
+    provider = MockStructuredProvider(
+        [
+            {
+                "event_kind": "receivable",
+                "amount": "2000.0000",
+                "currency": "INR",
+                "description": "Train ticket lent to Rahul",
+                "occurred_at": "2026-07-23T10:00:00+05:30",
+                "counterparty": "Rahul",
+                "tags": [],
+                "confidence": "0.9300",
+            }
+        ]
+    )
+    extractor = FinancialNoteExtractor(
+        provider,
+        max_input_chars=8_000,
+        review_confidence_threshold=Decimal("0.8500"),
+    )
+
+    result = await extractor.extract("Lent Rahul ₹2,000 yesterday", CONTEXT)
+
+    assert result.event.event_kind is NormalizedEventKind.RECEIVABLE
+    assert result.event.amount == Decimal("2000.0000")
+    assert result.event.counterparty == "Rahul"
+    assert result.event.occurred_at == datetime(2026, 7, 23, 4, 30, tzinfo=UTC)
+
+
+@pytest.mark.asyncio
 async def test_missing_facts_remain_unknown_and_add_review_reasons() -> None:
     provider = MockStructuredProvider(
         [
