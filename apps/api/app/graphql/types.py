@@ -342,6 +342,12 @@ class SubmitFinancialNoteInput:
     labels: list[str] | None = None
 
 
+@strawberry.input
+class ImportGoogleKeepNoteInput:
+    filename: str
+    content: str
+
+
 @strawberry.type
 class CreateTransactionSuccess:
     transaction: TransactionType
@@ -402,6 +408,12 @@ class CancelObligationSuccess:
 @strawberry.type
 class SubmitFinancialNoteSuccess:
     proposal: FinancialEventProposalType
+
+
+@strawberry.type
+class ImportGoogleKeepNoteSuccess:
+    proposal: FinancialEventProposalType | None
+    ignored: bool
 
 
 @strawberry.type
@@ -489,6 +501,11 @@ CancelObligationResult = Annotated[
 SubmitFinancialNoteResult = Annotated[
     SubmitFinancialNoteSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
     strawberry.union("SubmitFinancialNoteResult"),
+]
+
+ImportGoogleKeepNoteResult = Annotated[
+    ImportGoogleKeepNoteSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
+    strawberry.union("ImportGoogleKeepNoteResult"),
 ]
 
 ReviewFinancialProposalResult = Annotated[

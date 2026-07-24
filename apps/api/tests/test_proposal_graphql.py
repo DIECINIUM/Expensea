@@ -1,5 +1,6 @@
 """GraphQL integration coverage for note submission and proposal review."""
 
+import json
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -91,6 +92,29 @@ PROPOSAL_QUEUE = (
     """
     + PROPOSAL_FIELDS
     + """
+      }
+    }
+"""
+)
+
+IMPORT_KEEP_NOTE = (
+    """
+    mutation ImportKeep($input: ImportGoogleKeepNoteInput!) {
+      importGoogleKeepNote(input: $input) {
+        __typename
+        ... on ImportGoogleKeepNoteSuccess {
+          ignored
+          proposal {
+    """
+    + PROPOSAL_FIELDS
+    + """
+          }
+        }
+        ... on ClientProblem {
+          code
+          message
+          field
+        }
       }
     }
 """
@@ -222,3 +246,61 @@ async def test_graphql_disabled_provider_returns_typed_problem_and_retains_raw_n
         "message": "Structured AI extraction is disabled.",
         "field": None,
     }
+
+
+@pytest.mark.database
+@pytest.mark.asyncio
+async def test_graphql_keep_takeout_import_minimizes_and_queues_note(
+    isolated_database: Database,
+    database_api_app: FastAPI,
+) -> None:
+    await _seed_owner(isolated_database)
+    database_api_app.state.structured_provider = MockStructuredProvider(
+        [
+            {
+                "event_kind": "receivable",
+                "amount": "800.0000",
+                "currency": "INR",
+                "description": "Cab fare lent to Priya",
+                "occurred_at": "2026-07-24T10:00:00+05:30",
+                "due_date": "2026-07-31",
+                "counterparty": "Priya",
+                "category_hint": "Travel",
+                "tags": ["friend", "cab"],
+                "confidence": "0.9400",
+            }
+        ]
+    )
+    transport = ASGITransport(app=database_api_app)
+    document = json.dumps(
+        {
+            "title": "Trip expense",
+            "textContent": "Lent Priya ₹800 for an airport cab",
+            "labels": [{"name": "Travel"}],
+            "userEditedTimestampUsec": "1784881800000000",
+            "attachments": [{"filePath": "private-receipt.jpg"}],
+        }
+    )
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(
+            "/graphql",
+            json={
+                "query": IMPORT_KEEP_NOTE,
+                "variables": {
+                    "input": {
+                        "filename": "Trip expense.json",
+                        "content": document,
+                    }
+                },
+            },
+        )
+
+    payload = response.json()
+    assert "errors" not in payload
+    result = payload["data"]["importGoogleKeepNote"]
+    assert result["__typename"] == "ImportGoogleKeepNoteSuccess"
+    assert result["ignored"] is False
+    assert result["proposal"]["source"] == "GOOGLE_KEEP_TAKEOUT"
+    assert result["proposal"]["eventKind"] == "RECEIVABLE"
+    assert result["proposal"]["status"] == "NEEDS_REVIEW"

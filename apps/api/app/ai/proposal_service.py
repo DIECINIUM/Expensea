@@ -24,6 +24,7 @@ from app.ai.proposal_repository import (
     ProposalRepository,
     proposal_view_from_model,
 )
+from app.connectors.google_keep_takeout import GoogleKeepTakeoutConnector
 from app.connectors.manual_note import (
     ManualNoteConnector,
     create_manual_note_envelope,
@@ -105,6 +106,26 @@ class FinancialProposalService:
             user_id,
             connector,
             envelope,
+        )
+        return await self.extract_raw_event(user_id, ingested.raw_event_id)
+
+    async def submit_google_keep_document(
+        self,
+        user_id: UUID,
+        *,
+        filename: str,
+        content: str,
+    ) -> FinancialEventProposalView | None:
+        """Import one bounded Takeout JSON note and queue its extraction for review."""
+        connector = GoogleKeepTakeoutConnector.from_documents([(filename, content)])
+        batch = await connector.fetch({})
+        if not batch.events:
+            return None
+        ingested = await self._ingestion.ingest_envelope(
+            user_id,
+            connector,
+            batch.events[0],
+            connection_key="takeout",
         )
         return await self.extract_raw_event(user_id, ingested.raw_event_id)
 

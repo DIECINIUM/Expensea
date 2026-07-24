@@ -46,6 +46,9 @@ from app.graphql.types import (
     CreateTransactionInput,
     CreateTransactionResult,
     CreateTransactionSuccess,
+    ImportGoogleKeepNoteInput,
+    ImportGoogleKeepNoteResult,
+    ImportGoogleKeepNoteSuccess,
     NotFoundProblem,
     RecordRecurringPaymentResult,
     RecordRecurringPaymentSuccess,
@@ -167,6 +170,31 @@ class Mutation:
         except (AIError, IngestionError) as exc:
             return _proposal_problem(exc)
         return SubmitFinancialNoteSuccess(proposal=map_financial_event_proposal(proposal))
+
+    @strawberry.mutation
+    async def import_google_keep_note(
+        self,
+        info: Info[GraphQLContext, None],
+        input: ImportGoogleKeepNoteInput,
+    ) -> ImportGoogleKeepNoteResult:
+        """Import one user-selected Google Keep Takeout JSON note."""
+        user_id = require_user_id(info.context)
+        try:
+            proposal = await info.context.proposals.submit_google_keep_document(
+                user_id,
+                filename=input.filename,
+                content=input.content,
+            )
+        except LedgerNotFoundError as exc:
+            return NotFoundProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerConflictError as exc:
+            return ConflictProblem(code=exc.code, message=exc.message, field=exc.field)
+        except (AIError, IngestionError) as exc:
+            return _proposal_problem(exc)
+        return ImportGoogleKeepNoteSuccess(
+            proposal=(map_financial_event_proposal(proposal) if proposal is not None else None),
+            ignored=proposal is None,
+        )
 
     @strawberry.mutation
     async def approve_financial_proposal(
