@@ -5,6 +5,10 @@ from decimal import Decimal
 import strawberry
 
 from app.domain.enums import (
+    RecurrenceRule,
+    RecurringPaymentStatus,
+)
+from app.domain.enums import (
     TransactionStatus as DomainTransactionStatus,
 )
 from app.domain.enums import (
@@ -16,7 +20,15 @@ from app.graphql.types import (
     FinancialSummaryType,
     MerchantSpendingType,
     MonthlySpendingType,
+    ObligationStatusValue,
+    ObligationType,
     PageInfoType,
+    PersonType,
+    RecordedRecurringPaymentType,
+    RecurrenceRuleValue,
+    RecurringPaymentStatusValue,
+    RecurringPaymentType,
+    SettlementType,
     TransactionConnectionType,
     TransactionEdgeType,
     TransactionStatusValue,
@@ -35,6 +47,15 @@ from app.ledger.dto import (
     TransactionPage,
     TransactionView,
     UserView,
+)
+from app.ledger.obligation_dto import (
+    ObligationView,
+    PersonView,
+    SettlementView,
+)
+from app.ledger.recurring_dto import (
+    RecordedRecurringPaymentView,
+    RecurringPaymentView,
 )
 
 
@@ -126,6 +147,66 @@ def map_monthly_spending(value: MonthlySpending) -> MonthlySpendingType:
     )
 
 
+def map_recurring_payment(value: RecurringPaymentView) -> RecurringPaymentType:
+    return RecurringPaymentType(
+        id=strawberry.ID(str(value.id)),
+        merchant_name=value.merchant_name,
+        amount=money_string(value.amount),
+        currency=value.currency,
+        recurrence_rule=RecurrenceRuleValue[value.recurrence_rule.name],
+        next_expected_date=value.next_expected_date,
+        status=RecurringPaymentStatusValue[value.status.name],
+    )
+
+
+def map_recorded_recurring_payment(
+    value: RecordedRecurringPaymentView,
+) -> RecordedRecurringPaymentType:
+    return RecordedRecurringPaymentType(
+        recorded_expected_date=value.recorded_expected_date,
+        transaction_id=strawberry.ID(str(value.transaction_id)),
+        transaction_date=value.transaction_date,
+        payment=map_recurring_payment(value.payment),
+    )
+
+
+def map_person(value: PersonView) -> PersonType:
+    return PersonType(id=strawberry.ID(str(value.id)), name=value.name)
+
+
+def map_obligation(value: ObligationView) -> ObligationType:
+    return ObligationType(
+        id=strawberry.ID(str(value.id)),
+        person_id=strawberry.ID(str(value.person_id)),
+        person_name=value.person_name,
+        amount=money_string(value.amount),
+        currency=value.currency,
+        paid_amount=money_string(value.settled_amount),
+        outstanding_amount=money_string(value.outstanding_amount),
+        description=value.description,
+        issued_date=value.issued_date,
+        due_date=value.due_date,
+        status=ObligationStatusValue[value.effective_status.name],
+        transaction_id=(
+            strawberry.ID(str(value.transaction_id)) if value.transaction_id is not None else None
+        ),
+    )
+
+
+def map_settlement(value: SettlementView) -> SettlementType:
+    return SettlementType(
+        id=strawberry.ID(str(value.id)),
+        obligation_id=strawberry.ID(str(value.obligation_id)),
+        amount=money_string(value.amount),
+        currency=value.currency,
+        settled_at=value.settled_at,
+        transaction_id=(
+            strawberry.ID(str(value.transaction_id)) if value.transaction_id is not None else None
+        ),
+        note=value.note,
+    )
+
+
 def to_domain_transaction_type(value: TransactionTypeValue) -> DomainTransactionType:
     return DomainTransactionType[value.name]
 
@@ -134,3 +215,13 @@ def to_domain_transaction_status(
     value: TransactionStatusValue,
 ) -> DomainTransactionStatus:
     return DomainTransactionStatus[value.name]
+
+
+def to_domain_recurrence_rule(value: RecurrenceRuleValue) -> RecurrenceRule:
+    return RecurrenceRule[value.name]
+
+
+def to_domain_recurring_status(
+    value: RecurringPaymentStatusValue,
+) -> RecurringPaymentStatus:
+    return RecurringPaymentStatus[value.name]

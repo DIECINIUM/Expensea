@@ -1,5 +1,7 @@
 """Public system fields and authenticated deterministic ledger queries."""
 
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import UUID
 
 import strawberry
@@ -12,6 +14,9 @@ from app.graphql.mappers import (
     map_category_spending,
     map_merchant_spending,
     map_monthly_spending,
+    map_obligation,
+    map_person,
+    map_recurring_payment,
     map_summary,
     map_transaction,
     map_transaction_page,
@@ -24,10 +29,18 @@ from app.graphql.types import (
     FinancialSummaryType,
     MerchantSpendingType,
     MonthlySpendingType,
+    ObligationSummaryType,
+    ObligationType,
+    PersonType,
+    RecurringPaymentType,
+    RecurringSummaryType,
     TransactionConnectionType,
     TransactionType,
     UserType,
 )
+from app.ledger.commands import parse_currency
+from app.ledger.periods import parse_timezone
+from app.ledger.recurring_commands import parse_upcoming_recurring_window
 
 
 @strawberry.type
@@ -170,3 +183,133 @@ class Query:
             info.context,
         )
         return [map_category(value) for value in values]
+
+    @strawberry.field
+    async def recurring_payments(
+        self,
+        info: Info[GraphQLContext, None],
+    ) -> list[RecurringPaymentType]:
+        user_id = require_user_id(info.context)
+        values = await resolve_safely(
+            info.context.recurring.list(user_id),
+            info.context,
+        )
+        return [map_recurring_payment(value) for value in values]
+
+    @strawberry.field
+    async def recurring_summary(
+        self,
+        info: Info[GraphQLContext, None],
+        currency: str | None = None,
+        days: int = 31,
+    ) -> RecurringSummaryType:
+        user_id = require_user_id(info.context)
+        if days < 1 or days > 366:
+            raise GraphQLError(
+                "days must be between 1 and 366.",
+                extensions={"code": "INVALID_DATE_WINDOW", "field": "days"},
+            )
+        user = await resolve_safely(
+            info.context.ledger.get_user(user_id),
+            info.context,
+        )
+        selected_currency = parse_currency(currency or user.default_currency)
+        today = datetime.now(UTC).astimezone(parse_timezone(user.timezone)).date()
+        window = parse_upcoming_recurring_window(
+            start_date=today,
+            end_date=today + timedelta(days=days),
+        )
+        totals = await resolve_safely(
+            info.context.recurring.upcoming_totals(user_id, window),
+            info.context,
+        )
+        selected = next(
+            (item for item in totals if item.currency == selected_currency),
+            None,
+        )
+        return RecurringSummaryType(
+            currency=selected_currency,
+            upcoming_amount=(
+                format(selected.amount, "f")
+                if selected is not None
+                else format(Decimal("0.0000"), "f")
+            ),
+            upcoming_count=selected.payment_count if selected is not None else 0,
+            window_start=window.start_date,
+            window_end=window.end_date,
+        )
+
+    @strawberry.field
+    async def people(
+        self,
+        info: Info[GraphQLContext, None],
+    ) -> list[PersonType]:
+        user_id = require_user_id(info.context)
+        values = await resolve_safely(
+            info.context.obligations.list_people(user_id),
+            info.context,
+        )
+        return [map_person(value) for value in values]
+
+    @strawberry.field
+    async def receivables(
+        self,
+        info: Info[GraphQLContext, None],
+    ) -> list[ObligationType]:
+        user_id = require_user_id(info.context)
+        values = await resolve_safely(
+            info.context.obligations.list_receivables(user_id),
+            info.context,
+        )
+        return [map_obligation(value) for value in values]
+
+    @strawberry.field
+    async def payables(
+        self,
+        info: Info[GraphQLContext, None],
+    ) -> list[ObligationType]:
+        user_id = require_user_id(info.context)
+        values = await resolve_safely(
+            info.context.obligations.list_payables(user_id),
+            info.context,
+        )
+        return [map_obligation(value) for value in values]
+
+    @strawberry.field
+    async def obligation_summary(
+        self,
+        info: Info[GraphQLContext, None],
+        currency: str | None = None,
+    ) -> ObligationSummaryType:
+        user_id = require_user_id(info.context)
+        user = await resolve_safely(
+            info.context.ledger.get_user(user_id),
+            info.context,
+        )
+        selected_currency = parse_currency(currency or user.default_currency)
+        totals = await resolve_safely(
+            info.context.obligations.outstanding_totals(user_id),
+            info.context,
+        )
+        selected = next(
+            (item for item in totals if item.currency == selected_currency),
+            None,
+        )
+        return ObligationSummaryType(
+            currency=selected_currency,
+            open_payables=(
+                format(selected.payable, "f")
+                if selected is not None
+                else format(Decimal("0.0000"), "f")
+            ),
+            open_receivables=(
+                format(selected.receivable, "f")
+                if selected is not None
+                else format(Decimal("0.0000"), "f")
+            ),
+            net_exposure=(
+                format(selected.net_exposure, "f")
+                if selected is not None
+                else format(Decimal("0.0000"), "f")
+            ),
+        )

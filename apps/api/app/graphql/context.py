@@ -6,6 +6,8 @@ from app.auth.principal import Principal
 from app.core.config import Settings
 from app.core.logging import current_request_id
 from app.db.session import Database
+from app.ledger.obligation_service import ObligationService
+from app.ledger.recurring_service import RecurringPaymentService
 from app.ledger.service import LedgerService
 
 
@@ -26,6 +28,8 @@ class GraphQLContext(BaseContext):
         self.settings = settings
         self.principal = principal
         self.ledger = LedgerService(database)
+        self.obligations = ObligationService(database)
+        self.recurring = RecurringPaymentService(database)
 
     @property
     def request_id(self) -> str | None:
