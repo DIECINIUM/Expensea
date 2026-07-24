@@ -39,7 +39,7 @@ export function ApiFoundationStatus({ status }: ApiFoundationStatusProps) {
           API unavailable
         </div>
         <p className="text-[11px] leading-4 text-white/70">
-          Demo data remains visible while the backend is offline.
+          Ledger values stay hidden until the API is available.
         </p>
         <button
           type="button"

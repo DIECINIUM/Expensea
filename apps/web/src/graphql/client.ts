@@ -20,7 +20,7 @@ export function createApolloClient(
         Query: {
           fields: {
             transactions: {
-              keyArgs: ['filters'],
+              keyArgs: ['filter'],
               merge: false,
             },
           },

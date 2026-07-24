@@ -1,6 +1,7 @@
 import type { DashboardTransactionType } from '../components/dashboard/types';
 
-const DECIMAL_STRING_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
+const DECIMAL_STRING_PATTERN = /^-?(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
+const NON_NEGATIVE_DECIMAL_STRING_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
 const CURRENCY_CODE_PATTERN = /^[A-Z]{3}$/;
 const MONTH_START_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -9,7 +10,15 @@ export type TransactionDirection = 'inflow' | 'outflow' | 'neutral';
 function assertDecimalString(amount: string): void {
   if (!DECIMAL_STRING_PATTERN.test(amount)) {
     throw new RangeError(
-      'Money values must be non-negative decimal strings with at most four fractional digits.',
+      'Money values must be decimal strings with at most four fractional digits.',
+    );
+  }
+}
+
+function assertNonNegativeDecimalString(amount: string): void {
+  if (!NON_NEGATIVE_DECIMAL_STRING_PATTERN.test(amount)) {
+    throw new RangeError(
+      'Transaction amounts must be non-negative decimal strings with at most four fractional digits.',
     );
   }
 }
@@ -69,6 +78,13 @@ export function formatMoney(
       return `${part.value}${decimalSeparator(locale)}${fraction}`;
     })
     .join('');
+}
+
+export function formatPercentage(value: number): string {
+  if (!Number.isSafeInteger(value)) {
+    throw new RangeError('Category percentages must be safe whole numbers.');
+  }
+  return `${value}%`;
 }
 
 export function formatLedgerDate(
@@ -142,6 +158,7 @@ export function formatTransactionAmount(
   transactionType: DashboardTransactionType,
   locale = 'en-IN',
 ): string {
+  assertNonNegativeDecimalString(amount);
   const formattedAmount = formatMoney(amount, currency, locale);
   const direction = getTransactionDirection(transactionType);
 

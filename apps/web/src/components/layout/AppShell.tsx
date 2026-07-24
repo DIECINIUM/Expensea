@@ -1,5 +1,5 @@
 import {
-  Bot,
+  CircleDollarSign,
   CreditCard,
   LayoutDashboard,
   Menu,
@@ -39,9 +39,9 @@ const navigationItems: readonly NavigationItem[] = [
     current: true,
   },
   { label: 'Transactions', href: '#transactions', icon: CreditCard },
-  { label: 'People', icon: Users },
-  { label: 'Recurring', icon: Repeat2 },
-  { label: 'AI preview', href: '#assistant', icon: Bot },
+  { label: 'People', href: '#people', icon: Users },
+  { label: 'Money owed', href: '#obligations', icon: CircleDollarSign },
+  { label: 'Recurring', href: '#recurring', icon: Repeat2 },
 ];
 
 interface SidebarProps {
@@ -146,6 +146,15 @@ function TopBar({
   menuButtonRef,
   onOpenNavigation,
 }: TopBarProps) {
+  const now = new Date();
+  const dateLabel = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'full',
+  }).format(now);
+  const monthLabel = new Intl.DateTimeFormat(undefined, {
+    month: 'long',
+    year: 'numeric',
+  }).format(now);
+
   return (
     <header className="sticky top-0 z-30 flex h-[76px] items-center border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur md:px-7 lg:px-9">
       <button
@@ -162,7 +171,7 @@ function TopBar({
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium text-slate-600">
-          Thursday, 23 July
+          {dateLabel}
         </p>
         <h1 className="truncate text-[15px] font-semibold text-slate-800">
           Personal workspace
@@ -171,21 +180,21 @@ function TopBar({
 
       <div className="flex items-center gap-3">
         <span className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm sm:inline-flex">
-          July 2026
+          {monthLabel}
         </span>
         <div
           className="flex items-center gap-2"
-          aria-label="Demo account: Mohd Salik"
+          aria-label="Development ledger identity"
         >
           <span className="bg-ink-800 grid size-8 place-items-center rounded-lg text-xs font-semibold text-white">
-            MS
+            SG
           </span>
           <span className="hidden text-left xl:block">
             <span className="block text-xs font-semibold text-slate-700">
-              Mohd Salik
+              Phase 1 ledger
             </span>
             <span className="block text-[10px] font-medium text-slate-600">
-              Demo account
+              Development identity
             </span>
           </span>
         </div>

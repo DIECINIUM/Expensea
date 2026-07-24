@@ -71,6 +71,9 @@ describe('ApiFoundationStatus', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /api unavailable/i,
     );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /ledger values stay hidden/i,
+    );
     expect(
       screen.getByRole('button', { name: /retry connection/i }),
     ).toBeEnabled();

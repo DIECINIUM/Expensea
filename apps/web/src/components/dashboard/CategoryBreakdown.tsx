@@ -1,4 +1,4 @@
-import { formatMoney } from '../../lib/ledger-formatters';
+import { formatMoney, formatPercentage } from '../../lib/ledger-formatters';
 import { Card } from './Card';
 import type { DashboardCategoryBreakdownData } from './types';
 
@@ -9,6 +9,9 @@ function categoryColor(index: number): string {
 }
 
 function visualShare(sharePercentage: number): number {
+  if (!Number.isFinite(sharePercentage)) {
+    return 0;
+  }
   return Math.min(100, Math.max(0, sharePercentage));
 }
 
@@ -65,7 +68,7 @@ export function CategoryBreakdown({
                   {formatMoney(category.amount, category.currency)}
                 </span>
                 <span className="w-7 text-right text-[10px] font-medium text-slate-600 tabular-nums">
-                  {category.sharePercentage}%
+                  {formatPercentage(category.sharePercentage)}
                 </span>
               </li>
             ))}

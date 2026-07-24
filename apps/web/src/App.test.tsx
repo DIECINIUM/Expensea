@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { App } from './App';
 import { FOUNDATION_STATUS_QUERY } from './graphql/foundation-status';
+import { dashboardSuccessMock } from './test/dashboard-fixtures';
 
 const foundationStatusMock = {
   request: {
@@ -24,27 +25,32 @@ const foundationStatusMock = {
 
 function renderApp() {
   return render(
-    <MockedProvider mocks={[foundationStatusMock]}>
+    <MockedProvider mocks={[foundationStatusMock, dashboardSuccessMock]}>
       <App />
     </MockedProvider>,
   );
 }
 
 describe('SpendGraph dashboard', () => {
-  it('renders the Phase 0 financial overview', () => {
+  it('renders the live Phase 1 financial overview', async () => {
     renderApp();
 
     expect(
-      screen.getByRole('heading', { name: /good morning, salik/i }),
+      await screen.findByRole('heading', {
+        name: /good morning, mohd salik/i,
+      }),
     ).toBeInTheDocument();
     expect(screen.getAllByText('₹18,540')).toHaveLength(2);
-    expect(screen.getByText('₹2,000')).toBeInTheDocument();
+    expect(screen.getByText('Open payable balance')).toBeInTheDocument();
+    expect(screen.getByText('Open receivable balance')).toBeInTheDocument();
+    expect(screen.getByText('1 expected payment')).toBeInTheDocument();
     expect(
-      screen.getByRole('table', { name: /four synthetic example/i }),
+      screen.getByRole('table', { name: /latest transactions/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/temporary presentation adapter/i),
+      screen.getByText(/deterministic phase 1 ledger services/i),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/synthetic/i)).not.toBeInTheDocument();
   });
 
   it('surfaces the successful backend foundation query', async () => {
@@ -86,13 +92,15 @@ describe('SpendGraph dashboard', () => {
       'Close navigation panel',
       'Overview',
       'Transactions',
-      'AI preview',
+      'People',
+      'Money owed',
+      'Recurring',
     ]);
     within(dialog)
       .getByText(/wrap focus to the end/i)
       .focus();
     expect(
-      within(dialog).getByRole('link', { name: /ai preview/i }),
+      within(dialog).getByRole('link', { name: /recurring/i }),
     ).toHaveFocus();
     within(dialog)
       .getByText(/wrap focus to the start/i)

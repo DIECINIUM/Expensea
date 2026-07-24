@@ -15,37 +15,52 @@ interface ChartPoint extends DashboardSpendingPoint {
   readonly y: number;
 }
 
+interface ChartGeometry {
+  readonly baselineY: number;
+  readonly points: readonly ChartPoint[];
+}
+
 function chartAmount(amount: string): number {
   const value = Number(amount);
-  if (!amount.trim() || !Number.isFinite(value) || value < 0) {
-    throw new RangeError('Chart amounts must be non-negative decimal strings.');
+  if (!amount.trim() || !Number.isFinite(value)) {
+    throw new RangeError('Chart amounts must be finite decimal strings.');
   }
   return value;
 }
 
 function buildChartPoints(
   points: readonly DashboardSpendingPoint[],
-): readonly ChartPoint[] {
+): ChartGeometry {
   // Number conversion is used only for SVG geometry. Displayed values and all
   // ledger totals remain the exact decimal strings returned by the service.
   const amounts = points.map((point) => chartAmount(point.amount));
-  const maxAmount = Math.max(...amounts, 1);
+  const minimumAmount = Math.min(...amounts, 0);
+  const maximumAmount = Math.max(...amounts, 0);
+  const range = maximumAmount - minimumAmount;
+  const verticalInset = 18;
+  const scaleY = (amount: number) =>
+    range === 0
+      ? chartHeight / 2
+      : verticalInset +
+        ((maximumAmount - amount) / range) * (chartHeight - verticalInset * 2);
 
-  return points.map((point, index) => {
-    const x =
-      points.length === 1
-        ? chartWidth / 2
-        : horizontalInset +
-          (index * (chartWidth - horizontalInset * 2)) / (points.length - 1);
-    const y = chartHeight - (amounts[index]! / maxAmount) * (chartHeight - 18);
+  return {
+    baselineY: scaleY(0),
+    points: points.map((point, index) => {
+      const x =
+        points.length === 1
+          ? chartWidth / 2
+          : horizontalInset +
+            (index * (chartWidth - horizontalInset * 2)) / (points.length - 1);
 
-    return {
-      ...point,
-      label: formatLedgerMonth(point.monthStart),
-      x,
-      y,
-    };
-  });
+      return {
+        ...point,
+        label: formatLedgerMonth(point.monthStart),
+        x,
+        y: scaleY(amounts[index]!),
+      };
+    }),
+  };
 }
 
 export function SpendingTrend({
@@ -55,7 +70,8 @@ export function SpendingTrend({
   points,
   statusLabel,
 }: DashboardSpendingTrendData) {
-  const chartPoints = buildChartPoints(points);
+  const chart = buildChartPoints(points);
+  const chartPoints = chart.points;
   const linePath = chartPoints
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
     .join(' ');
@@ -63,7 +79,7 @@ export function SpendingTrend({
   const lastPoint = chartPoints.at(-1);
   const areaPath =
     firstPoint && lastPoint
-      ? `${linePath} L ${lastPoint.x} ${chartHeight} L ${firstPoint.x} ${chartHeight} Z`
+      ? `${linePath} L ${lastPoint.x} ${chart.baselineY} L ${firstPoint.x} ${chart.baselineY} Z`
       : '';
 
   return (

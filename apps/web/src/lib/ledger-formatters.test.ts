@@ -4,6 +4,7 @@ import {
   formatLedgerDate,
   formatLedgerMonth,
   formatMoney,
+  formatPercentage,
   formatTransactionAmount,
   getTransactionDirection,
 } from './ledger-formatters';
@@ -15,12 +16,19 @@ describe('ledger formatters', () => {
     expect(formatMoney('9007199254740993.1250', 'INR')).toBe(
       '₹9,00,71,99,25,47,40,993.125',
     );
+    expect(formatMoney('-1250.5000', 'INR')).toBe('-₹1,250.5');
   });
 
   it('rejects invalid money contracts instead of guessing', () => {
-    expect(() => formatMoney('-1.00', 'INR')).toThrow(/non-negative decimal/i);
+    expect(() => formatMoney('+1.00', 'INR')).toThrow(/decimal strings/i);
     expect(() => formatMoney('1.00001', 'INR')).toThrow(/four fractional/i);
     expect(() => formatMoney('1.00', 'inr')).toThrow(/uppercase iso 4217/i);
+  });
+
+  it('formats a service-provided category percentage without deriving it', () => {
+    expect(formatPercentage(29)).toBe('29%');
+    expect(formatPercentage(-100)).toBe('-100%');
+    expect(() => formatPercentage(1.5)).toThrow(/safe whole numbers/i);
   });
 
   it('formats instants in the account timezone and calendar months as dates', () => {
