@@ -53,7 +53,13 @@ from app.ledger.periods import parse_timezone
 from app.ledger.recurring_commands import parse_create_recurring_payment
 from app.ledger.recurring_repository import RecurringPaymentRepository
 from app.ledger.repository import LedgerRepository
-from app.models import FinancialEventProposal, RawEventProcessing
+from app.models import (
+    FinancialEventProposal,
+    NormalizedFinancialEvent,
+)
+from app.reconciliation.dto import ReconciliationProcessingOutcome
+from app.reconciliation.policy import ReconciliationPolicy
+from app.reconciliation.service import ReconciliationCoordinator
 
 Clock = Callable[[], datetime]
 
@@ -78,12 +84,18 @@ class FinancialProposalService:
         database: Database,
         extractor: FinancialNoteExtractor,
         *,
+        reconciliation_policy: ReconciliationPolicy | None = None,
         clock: Clock = _utc_now,
     ) -> None:
+        policy = reconciliation_policy or ReconciliationPolicy()
         self._database = database
         self._extractor = extractor
         self._clock = clock
-        self._ingestion = IngestionService(database)
+        self._ingestion = IngestionService(
+            database,
+            reconciliation_policy=policy,
+        )
+        self._reconciliation = ReconciliationCoordinator(policy)
 
     async def submit_manual_note(
         self,
@@ -243,15 +255,26 @@ class FinancialProposalService:
             )
 
             transaction_type = _TRANSACTION_TYPES.get(proposal.event_kind)
+            reconciliation_pending = False
             if transaction_type is not None:
-                proposal.transaction_id = await self._approve_transaction(
+                outcome = await self._approve_transaction(
                     user_id,
                     proposal,
                     transaction_type,
-                    normalized_model.id,
-                    processing,
+                    normalized_model,
                     session,
                 )
+                if outcome.requires_review:
+                    reconciliation_pending = True
+                    proposal.status = ProposalStatus.RECONCILIATION_REVIEW
+                    processing.last_error_code = "POSSIBLE_DUPLICATE"
+                else:
+                    if outcome.transaction_id is None:
+                        raise ProposalReviewError(
+                            code="RECONCILIATION_TARGET_MISSING",
+                            message="Reconciliation did not produce a canonical transaction.",
+                        )
+                    proposal.transaction_id = outcome.transaction_id
             elif proposal.event_kind is NormalizedEventKind.RECEIVABLE:
                 proposal.receivable_id = await self._approve_obligation(
                     user_id,
@@ -278,10 +301,11 @@ class FinancialProposalService:
                     message="This extracted event kind cannot be approved.",
                 )
 
-            require_state_transition(processing.state, RawEventState.PROCESSED)
-            processing.state = RawEventState.PROCESSED
-            processing.last_error_code = None
-            proposal.status = ProposalStatus.APPROVED
+            if not reconciliation_pending:
+                require_state_transition(processing.state, RawEventState.PROCESSED)
+                processing.state = RawEventState.PROCESSED
+                processing.last_error_code = None
+                proposal.status = ProposalStatus.APPROVED
             await proposals.flush()
             return proposal_view_from_model(proposal, source)
 
@@ -290,10 +314,9 @@ class FinancialProposalService:
         user_id: UUID,
         proposal: FinancialEventProposal,
         transaction_type: TransactionType,
-        normalized_event_id: UUID,
-        processing: RawEventProcessing,
+        normalized_event: NormalizedFinancialEvent,
         session: AsyncSession,
-    ) -> UUID:
+    ) -> ReconciliationProcessingOutcome:
         amount, currency, occurred_at = self._require_money_and_occurred(proposal)
         ledger = LedgerRepository(session)
         category_id = None
@@ -314,16 +337,14 @@ class FinancialProposalService:
             source=TransactionSource.INGESTION,
             confidence=proposal.confidence,
         )
-        transaction = await ledger.create_transaction(user_id, command)
-        await IngestionRepository(session).add_evidence(
+        return await self._reconciliation.reconcile_transaction(
             user_id,
-            processing.raw_event_id,
-            normalized_event_id,
-            transaction.id,
-            locator={"proposalId": str(proposal.id)},
-            excerpt=None,
+            normalized_event,
+            command,
+            evidence_locator={"proposalId": str(proposal.id)},
+            evidence_excerpt=None,
+            session=session,
         )
-        return transaction.id
 
     async def _approve_obligation(
         self,

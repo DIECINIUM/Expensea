@@ -206,6 +206,7 @@ async def test_connector_sync_advances_cursor_after_durable_receipt(
                 update={
                     "payload": {
                         **_receipt("receipt-002").payload,
+                        "amount": "799.0000",
                         "description": "Second cloud receipt",
                     }
                 }

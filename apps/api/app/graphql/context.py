@@ -14,6 +14,8 @@ from app.db.session import Database
 from app.ledger.obligation_service import ObligationService
 from app.ledger.recurring_service import RecurringPaymentService
 from app.ledger.service import LedgerService
+from app.reconciliation.policy import ReconciliationPolicy
+from app.reconciliation.service import ReconciliationService
 
 
 class GraphQLContext(BaseContext):
@@ -36,6 +38,20 @@ class GraphQLContext(BaseContext):
         self.ledger = LedgerService(database)
         self.obligations = ObligationService(database)
         self.recurring = RecurringPaymentService(database)
+        reconciliation_policy = ReconciliationPolicy(
+            candidate_window_minutes=settings.reconciliation_candidate_window_minutes,
+            max_candidates=settings.reconciliation_max_candidates,
+            possible_duplicate_threshold=settings.reconciliation_possible_duplicate_threshold,
+            auto_merge_threshold=settings.reconciliation_auto_merge_threshold,
+            amount_weight=settings.reconciliation_amount_weight,
+            time_weight=settings.reconciliation_time_weight,
+            merchant_weight=settings.reconciliation_merchant_weight,
+            description_weight=settings.reconciliation_description_weight,
+        )
+        self.reconciliation = ReconciliationService(
+            database,
+            reconciliation_policy,
+        )
         self.proposals = FinancialProposalService(
             database,
             FinancialNoteExtractor(
@@ -43,6 +59,7 @@ class GraphQLContext(BaseContext):
                 max_input_chars=settings.ai_max_input_chars,
                 review_confidence_threshold=Decimal(str(settings.ai_review_confidence_threshold)),
             ),
+            reconciliation_policy=reconciliation_policy,
         )
 
     @property

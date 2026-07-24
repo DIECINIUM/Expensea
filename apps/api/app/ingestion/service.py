@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.connectors.contracts import (
     Connector,
     ConnectorEnvelope,
@@ -39,6 +41,8 @@ from app.ledger.commands import parse_create_transaction
 from app.ledger.errors import LedgerError, LedgerNotFoundError
 from app.ledger.repository import LedgerRepository
 from app.models import NormalizedFinancialEvent, RawEventProcessing
+from app.reconciliation.policy import ReconciliationPolicy
+from app.reconciliation.service import ReconciliationCoordinator
 
 NORMALIZER_VERSION = "1"
 _POSTABLE_KINDS: dict[NormalizedEventKind, TransactionType] = {
@@ -59,8 +63,15 @@ _TERMINAL_STATES = frozenset(
 class IngestionService:
     """Durably ingest connector pages without duplicate canonical writes."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self,
+        database: Database,
+        reconciliation_policy: ReconciliationPolicy | None = None,
+    ) -> None:
         self._database = database
+        self._reconciliation = ReconciliationCoordinator(
+            reconciliation_policy or ReconciliationPolicy()
+        )
 
     async def sync_connector(
         self,
@@ -311,10 +322,10 @@ class IngestionService:
             result = await self._post_or_queue_review(
                 user_id,
                 envelope,
-                repository,
                 ledger,
                 processing,
                 persisted,
+                session,
             )
             return IngestionResult(
                 raw_event_id=stored.id,
@@ -329,10 +340,10 @@ class IngestionService:
         self,
         user_id: UUID,
         envelope: ConnectorEnvelope,
-        repository: IngestionRepository,
         ledger: LedgerRepository,
         processing: RawEventProcessing,
         event: NormalizedFinancialEvent,
+        session: AsyncSession,
     ) -> UUID | None:
         transaction_type = _POSTABLE_KINDS.get(event.event_kind)
         if (
@@ -371,16 +382,25 @@ class IngestionService:
             processing.last_error_code = "LEDGER_VALIDATION_REVIEW"
             return None
 
-        transaction = await ledger.create_transaction(user_id, command)
-        await repository.add_evidence(
+        outcome = await self._reconciliation.reconcile_transaction(
             user_id,
-            processing.raw_event_id,
-            event.id,
-            transaction.id,
-            locator=dict(envelope.locator),
-            excerpt=envelope.evidence_excerpt,
+            event,
+            command,
+            evidence_locator=dict(envelope.locator),
+            evidence_excerpt=envelope.evidence_excerpt,
+            session=session,
         )
+        if outcome.requires_review:
+            require_state_transition(processing.state, RawEventState.NEEDS_REVIEW)
+            processing.state = RawEventState.NEEDS_REVIEW
+            processing.last_error_code = "POSSIBLE_DUPLICATE"
+            return None
+        if outcome.transaction_id is None:
+            raise IngestionConflictError(
+                code="RECONCILIATION_TARGET_MISSING",
+                message="Reconciliation did not produce a canonical transaction.",
+            )
         require_state_transition(processing.state, RawEventState.PROCESSED)
         processing.state = RawEventState.PROCESSED
         processing.last_error_code = None
-        return transaction.id
+        return outcome.transaction_id
