@@ -148,7 +148,11 @@ export function Dashboard({
             <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
               <CategoryBreakdown {...data.categoryBreakdown} />
               <div className="xl:col-span-2">
-                <RecentActivity {...data.recentActivity} />
+                <RecentActivity
+                  {...data.recentActivity}
+                  categories={categories}
+                  onChanged={onDataChanged}
+                />
               </div>
             </div>
           </>

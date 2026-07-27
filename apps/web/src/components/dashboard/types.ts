@@ -53,6 +53,10 @@ export interface DashboardTransaction {
   readonly status: DashboardTransactionStatus;
   readonly merchantName: string | null;
   readonly categoryName: string | null;
+  readonly categorySource?: string | null;
+  readonly categoryClassifierVersion?: string | null;
+  readonly categoryConfidence?: string | null;
+  readonly categoryOverridden?: boolean;
 }
 
 export interface DashboardCategoryBreakdownData {

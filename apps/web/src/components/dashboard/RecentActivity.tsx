@@ -29,7 +29,34 @@ export function RecentActivity({
   tableCaption,
   timeZone,
   transactions,
-}: DashboardRecentActivityData) {
+  categories,
+  onChanged,
+}: DashboardRecentActivityData & {
+  readonly categories: readonly DashboardCategoryData[];
+  readonly onChanged: () => Promise<void>;
+}) {
+  const [message, setMessage] = useState<string | null>(null);
+  const [correctCategory, { loading }] = useMutation<
+    CorrectCategoryMutationData,
+    CorrectCategoryMutationVariables
+  >(CORRECT_TRANSACTION_CATEGORY_MUTATION);
+
+  async function changeCategory(transactionId: string, categoryId: string) {
+    if (!categoryId) return;
+    setMessage(null);
+    const response = await correctCategory({
+      variables: { input: { transactionId, categoryId } },
+    });
+    const result = response.data?.correctTransactionCategory;
+    if (!result || result.__typename !== 'CorrectTransactionCategorySuccess') {
+      setMessage(result?.message ?? 'Could not save that category correction.');
+      return;
+    }
+    await onChanged();
+    setMessage(
+      `Saved ${result.correction.correctedCategoryName}; future matches will remember it.`,
+    );
+  }
   return (
     <Card id="transactions" className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
@@ -47,6 +74,14 @@ export function RecentActivity({
           </span>
         )}
       </div>
+      {message && (
+        <p
+          className="border-b border-slate-100 px-5 py-2 text-[11px] text-slate-600"
+          role="status"
+        >
+          {message}
+        </p>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[660px] border-collapse text-left">
@@ -109,7 +144,46 @@ export function RecentActivity({
                       </div>
                     </th>
                     <td className="px-4 py-3.5 text-xs text-slate-500">
-                      {transaction.categoryName ?? 'Uncategorized'}
+                      <label
+                        className="sr-only"
+                        htmlFor={`category-${transaction.id}`}
+                      >
+                        Classification for {label}
+                      </label>
+                      <select
+                        id={`category-${transaction.id}`}
+                        disabled={loading}
+                        value={
+                          categories.find(
+                            (category) =>
+                              category.name === transaction.categoryName,
+                          )?.id ?? ''
+                        }
+                        onChange={(event) => {
+                          void changeCategory(
+                            transaction.id,
+                            event.target.value,
+                          );
+                        }}
+                        className="max-w-36 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px]"
+                        title={
+                          transaction.categorySource
+                            ? `${transaction.categorySource.toLowerCase().replaceAll('_', ' ')} · ${
+                                transaction.categoryConfidence ??
+                                'unknown confidence'
+                              }`
+                            : 'Uncategorized'
+                        }
+                      >
+                        <option value="" disabled>
+                          Uncategorized
+                        </option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-4 py-3.5">
                       <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-500">
@@ -148,3 +222,12 @@ export function RecentActivity({
     </Card>
   );
 }
+import { useMutation } from '@apollo/client/react';
+import { useState } from 'react';
+
+import {
+  CORRECT_TRANSACTION_CATEGORY_MUTATION,
+  type CorrectCategoryMutationData,
+  type CorrectCategoryMutationVariables,
+} from '../../graphql/categorization';
+import type { DashboardCategoryData } from '../../graphql/dashboard';

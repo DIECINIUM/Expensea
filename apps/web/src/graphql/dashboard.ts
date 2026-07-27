@@ -67,6 +67,10 @@ export const DASHBOARD_QUERY = gql`
           status
           merchantName
           categoryName
+          categorySource
+          categoryClassifierVersion
+          categoryConfidence
+          categoryOverridden
         }
       }
       pageInfo {
@@ -186,6 +190,10 @@ export interface DashboardTransactionNode {
   readonly status: DashboardTransactionStatus;
   readonly merchantName: string | null;
   readonly categoryName: string | null;
+  readonly categorySource?: string | null;
+  readonly categoryClassifierVersion?: string | null;
+  readonly categoryConfidence?: string | null;
+  readonly categoryOverridden?: boolean;
 }
 
 export interface TransactionEdgeData {
