@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.categorization.policy import CLASSIFIER_VERSION
+from app.categorization.repository import CategorizationRepository
 from app.connectors.contracts import (
     Connector,
     ConnectorEnvelope,
@@ -14,6 +17,7 @@ from app.connectors.contracts import (
 )
 from app.db.session import Database
 from app.domain.enums import (
+    CategorizationSource,
     NormalizedEventKind,
     RawEventState,
     SourceConnectionStatus,
@@ -357,8 +361,17 @@ class IngestionService:
             processing.last_error_code = "REVIEW_REQUIRED"
             return None
 
-        category_id = None
-        if event.category_hint is not None:
+        assignment = await CategorizationRepository(session).classify(
+            user_id,
+            description=event.description,
+            merchant_normalized_name=(
+                normalize_display_text(event.merchant_name).casefold()
+                if event.merchant_name
+                else None
+            ),
+        )
+        category_id = assignment.category_id if assignment else None
+        if assignment is None and event.category_hint is not None:
             category_id = await ledger.find_visible_category_id(
                 user_id,
                 normalize_display_text(event.category_hint).casefold(),
@@ -376,6 +389,22 @@ class IngestionService:
                 source=TransactionSource.INGESTION,
                 confidence=normalized_model_confidence(event),
             )
+            if assignment is not None:
+                command = replace(
+                    command,
+                    category_source=assignment.source,
+                    category_classifier_version=assignment.version,
+                    category_confidence=assignment.confidence,
+                    category_overridden=False,
+                )
+            elif category_id is not None:
+                command = replace(
+                    command,
+                    category_source=CategorizationSource.MODEL,
+                    category_classifier_version=CLASSIFIER_VERSION,
+                    category_confidence=normalized_model_confidence(event),
+                    category_overridden=False,
+                )
         except LedgerError:
             require_state_transition(processing.state, RawEventState.NEEDS_REVIEW)
             processing.state = RawEventState.NEEDS_REVIEW

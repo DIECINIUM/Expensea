@@ -8,6 +8,7 @@ from app.ai.contracts import StructuredCompletionProvider
 from app.ai.extraction import FinancialNoteExtractor
 from app.ai.proposal_service import FinancialProposalService
 from app.auth.principal import Principal
+from app.categorization.service import CategorizationService
 from app.core.config import Settings
 from app.core.logging import current_request_id
 from app.db.session import Database
@@ -36,6 +37,7 @@ class GraphQLContext(BaseContext):
         self.settings = settings
         self.principal = principal
         self.ledger = LedgerService(database)
+        self.categorization = CategorizationService(database)
         self.obligations = ObligationService(database)
         self.recurring = RecurringPaymentService(database)
         reconciliation_policy = ReconciliationPolicy(

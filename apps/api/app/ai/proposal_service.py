@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -24,6 +25,8 @@ from app.ai.proposal_repository import (
     ProposalRepository,
     proposal_view_from_model,
 )
+from app.categorization.policy import CLASSIFIER_VERSION
+from app.categorization.repository import CategorizationRepository
 from app.connectors.google_keep_takeout import GoogleKeepTakeoutConnector
 from app.connectors.manual_note import (
     ManualNoteConnector,
@@ -31,6 +34,7 @@ from app.connectors.manual_note import (
 )
 from app.db.session import Database
 from app.domain.enums import (
+    CategorizationSource,
     NormalizedEventKind,
     ProposalStatus,
     RawEventState,
@@ -319,8 +323,17 @@ class FinancialProposalService:
     ) -> ReconciliationProcessingOutcome:
         amount, currency, occurred_at = self._require_money_and_occurred(proposal)
         ledger = LedgerRepository(session)
-        category_id = None
-        if proposal.category_hint is not None:
+        assignment = await CategorizationRepository(session).classify(
+            user_id,
+            description=proposal.description,
+            merchant_normalized_name=(
+                normalize_lookup_text(proposal.merchant_name)
+                if proposal.merchant_name is not None
+                else None
+            ),
+        )
+        category_id = assignment.category_id if assignment is not None else None
+        if assignment is None and proposal.category_hint is not None:
             category_id = await ledger.find_visible_category_id(
                 user_id,
                 normalize_lookup_text(proposal.category_hint),
@@ -337,6 +350,22 @@ class FinancialProposalService:
             source=TransactionSource.INGESTION,
             confidence=proposal.confidence,
         )
+        if assignment is not None:
+            command = replace(
+                command,
+                category_source=assignment.source,
+                category_classifier_version=assignment.version,
+                category_confidence=assignment.confidence,
+                category_overridden=False,
+            )
+        elif category_id is not None:
+            command = replace(
+                command,
+                category_source=CategorizationSource.MODEL,
+                category_classifier_version=CLASSIFIER_VERSION,
+                category_confidence=proposal.confidence,
+                category_overridden=False,
+            )
         return await self._reconciliation.reconcile_transaction(
             user_id,
             normalized_event,

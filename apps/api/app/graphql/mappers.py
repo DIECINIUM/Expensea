@@ -5,6 +5,7 @@ from decimal import Decimal
 import strawberry
 
 from app.ai.proposal_dto import FinancialEventProposalView
+from app.categorization.dto import CategoryRuleView, CorrectionView
 from app.domain.enums import (
     ProposalStatus,
     ReconciliationStatus,
@@ -18,6 +19,8 @@ from app.domain.enums import (
     TransactionType as DomainTransactionType,
 )
 from app.graphql.types import (
+    CategorizationSourceValue,
+    CategoryRuleType,
     CategorySpendingType,
     CategoryType,
     ConnectorTypeValue,
@@ -45,6 +48,7 @@ from app.graphql.types import (
     TransactionEdgeType,
     TransactionStatusValue,
     TransactionTypeValue,
+    UserCorrectionType,
     UserType,
 )
 from app.graphql.types import (
@@ -101,6 +105,41 @@ def map_transaction(value: TransactionView) -> TransactionTypeNode:
         status=TransactionStatusValue[value.status.name],
         merchant_name=value.merchant_name,
         category_name=value.category_name,
+        category_source=(
+            CategorizationSourceValue[value.category_source.name]
+            if value.category_source is not None
+            else None
+        ),
+        category_classifier_version=value.category_classifier_version,
+        category_confidence=(
+            money_string(value.category_confidence)
+            if value.category_confidence is not None
+            else None
+        ),
+        category_overridden=value.category_overridden,
+    )
+
+
+def map_correction(value: CorrectionView) -> UserCorrectionType:
+    return UserCorrectionType(
+        id=strawberry.ID(str(value.id)),
+        transaction_id=strawberry.ID(str(value.transaction_id)),
+        previous_category_name=value.previous_category_name,
+        corrected_category_name=value.corrected_category_name,
+        classifier_version=value.classifier_version,
+        confidence=money_string(value.confidence),
+        created_at=value.created_at,
+    )
+
+
+def map_category_rule(value: CategoryRuleView) -> CategoryRuleType:
+    return CategoryRuleType(
+        id=strawberry.ID(str(value.id)),
+        pattern=value.pattern,
+        category_id=strawberry.ID(str(value.category_id)),
+        category_name=value.category_name,
+        priority=value.priority,
+        enabled=value.enabled,
     )
 
 

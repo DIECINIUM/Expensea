@@ -1,6 +1,7 @@
 """Phase 1 relational ledger models."""
 
 from app.models.catalog import Category, Merchant
+from app.models.categorization import CategoryRule, MerchantCategoryMap, UserCorrection
 from app.models.ingestion import (
     Evidence,
     NormalizedFinancialEvent,
@@ -18,10 +19,12 @@ from app.models.user import User
 
 __all__ = [
     "Category",
+    "CategoryRule",
     "Evidence",
     "FinancialEventProposal",
     "LedgerTransaction",
     "Merchant",
+    "MerchantCategoryMap",
     "NormalizedFinancialEvent",
     "ObligationSettlement",
     "Payable",
@@ -34,4 +37,5 @@ __all__ = [
     "RecurringPayment",
     "SourceConnection",
     "User",
+    "UserCorrection",
 ]

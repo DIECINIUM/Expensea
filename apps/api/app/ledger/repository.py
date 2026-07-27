@@ -124,6 +124,10 @@ class LedgerRepository:
             merchant_id=merchant_id,
             source=command.source,
             confidence=command.confidence,
+            category_source=command.category_source,
+            category_classifier_version=command.category_classifier_version,
+            category_confidence=command.category_confidence,
+            category_overridden=command.category_overridden,
         )
         self._session.add(transaction)
         await self._session.flush()
@@ -404,4 +408,8 @@ class LedgerRepository:
             status=transaction.status,
             merchant_name=merchant_name,
             category_name=category_name,
+            category_source=transaction.category_source,
+            category_classifier_version=transaction.category_classifier_version,
+            category_confidence=transaction.category_confidence,
+            category_overridden=transaction.category_overridden,
         )

@@ -12,6 +12,7 @@ from app.graphql.context import GraphQLContext
 from app.graphql.mappers import (
     map_category,
     map_category_spending,
+    map_correction,
     map_financial_event_proposal,
     map_merchant_spending,
     map_monthly_spending,
@@ -44,6 +45,7 @@ from app.graphql.types import (
     RecurringSummaryType,
     TransactionConnectionType,
     TransactionType,
+    UserCorrectionType,
     UserType,
 )
 from app.ledger.commands import parse_currency
@@ -191,6 +193,14 @@ class Query:
             info.context,
         )
         return [map_category(value) for value in values]
+
+    @strawberry.field
+    async def user_corrections(self, info: Info[GraphQLContext, None]) -> list[UserCorrectionType]:
+        user_id = require_user_id(info.context)
+        values = await resolve_safely(
+            info.context.categorization.list_corrections(user_id), info.context
+        )
+        return [map_correction(value) for value in values]
 
     @strawberry.field
     async def financial_event_proposals(

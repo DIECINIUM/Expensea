@@ -5,7 +5,12 @@ from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from uuid import UUID
 
-from app.domain.enums import TransactionSource, TransactionStatus, TransactionType
+from app.domain.enums import (
+    CategorizationSource,
+    TransactionSource,
+    TransactionStatus,
+    TransactionType,
+)
 from app.domain.money import normalize_currency_code, validate_positive_money
 from app.domain.normalization import normalize_display_text
 from app.ledger.errors import LedgerValidationError
@@ -44,6 +49,10 @@ class CreateTransactionCommand:
     merchant_normalized_name: str | None
     source: TransactionSource
     confidence: Decimal | None
+    category_source: CategorizationSource | None
+    category_classifier_version: str | None
+    category_confidence: Decimal | None
+    category_overridden: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +114,10 @@ def parse_create_transaction(
         merchant_normalized_name=parsed_merchant_lookup,
         source=source,
         confidence=parsed_confidence,
+        category_source=CategorizationSource.USER_OVERRIDE if category_id else None,
+        category_classifier_version="explicit-user-v1" if category_id else None,
+        category_confidence=Decimal("1.0000") if category_id else None,
+        category_overridden=category_id is not None,
     )
 
 

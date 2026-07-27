@@ -109,6 +109,16 @@ class ConnectorTypeValue(Enum):
     GOOGLE_KEEP_TAKEOUT = "GOOGLE_KEEP_TAKEOUT"
 
 
+@strawberry.enum
+class CategorizationSourceValue(Enum):
+    USER_RULE = "USER_RULE"
+    MERCHANT_MAP = "MERCHANT_MAP"
+    VERIFIED_CORRECTION = "VERIFIED_CORRECTION"
+    RETRIEVAL = "RETRIEVAL"
+    MODEL = "MODEL"
+    USER_OVERRIDE = "USER_OVERRIDE"
+
+
 @strawberry.type
 class UserType:
     id: strawberry.ID
@@ -134,6 +144,31 @@ class TransactionType:
     status: TransactionStatusValue
     merchant_name: str | None
     category_name: str | None
+    category_source: CategorizationSourceValue | None
+    category_classifier_version: str | None
+    category_confidence: str | None
+    category_overridden: bool
+
+
+@strawberry.type
+class UserCorrectionType:
+    id: strawberry.ID
+    transaction_id: strawberry.ID
+    previous_category_name: str | None
+    corrected_category_name: str
+    classifier_version: str
+    confidence: str
+    created_at: datetime
+
+
+@strawberry.type
+class CategoryRuleType:
+    id: strawberry.ID
+    pattern: str
+    category_id: strawberry.ID
+    category_name: str
+    priority: int
+    enabled: bool
 
 
 @strawberry.type
@@ -343,6 +378,19 @@ class CreateCategoryInput:
 
 
 @strawberry.input
+class CorrectTransactionCategoryInput:
+    transaction_id: strawberry.ID
+    category_id: strawberry.ID
+
+
+@strawberry.input
+class CreateCategoryRuleInput:
+    pattern: str
+    category_id: strawberry.ID
+    priority: int = 100
+
+
+@strawberry.input
 class CreateRecurringPaymentInput:
     merchant_name: str
     amount: str
@@ -420,6 +468,16 @@ class CreateTransactionSuccess:
 @strawberry.type
 class CreateCategorySuccess:
     category: CategoryType
+
+
+@strawberry.type
+class CorrectTransactionCategorySuccess:
+    correction: UserCorrectionType
+
+
+@strawberry.type
+class CreateCategoryRuleSuccess:
+    rule: CategoryRuleType
 
 
 @strawberry.type
@@ -520,6 +578,16 @@ CreateTransactionResult = Annotated[
 CreateCategoryResult = Annotated[
     CreateCategorySuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
     strawberry.union("CreateCategoryResult"),
+]
+
+CorrectTransactionCategoryResult = Annotated[
+    CorrectTransactionCategorySuccess | ValidationProblem | NotFoundProblem,
+    strawberry.union("CorrectTransactionCategoryResult"),
+]
+
+CreateCategoryRuleResult = Annotated[
+    CreateCategoryRuleSuccess | ValidationProblem | NotFoundProblem | ConflictProblem,
+    strawberry.union("CreateCategoryRuleResult"),
 ]
 
 CreateRecurringPaymentResult = Annotated[

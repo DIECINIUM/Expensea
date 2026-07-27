@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from app.domain.enums import TransactionStatus, TransactionType
+from app.domain.enums import CategorizationSource, TransactionStatus, TransactionType
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +50,10 @@ class TransactionView:
     status: TransactionStatus
     merchant_name: str | None
     category_name: str | None
+    category_source: CategorizationSource | None
+    category_classifier_version: str | None
+    category_confidence: Decimal | None
+    category_overridden: bool
 
 
 @dataclass(frozen=True, slots=True)

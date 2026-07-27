@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
+from app.categorization.repository import CategorizationRepository
 from app.db.session import Database
 from app.ledger.commands import (
     CreateCategoryCommand,
@@ -109,7 +111,23 @@ class LedgerService:
                     message="The selected category was not found.",
                     field="categoryId",
                 )
-            return await repository.create_transaction(user_id, command)
+            selected = command
+            if command.category_id is None:
+                assignment = await CategorizationRepository(session).classify(
+                    user_id,
+                    description=command.description,
+                    merchant_normalized_name=command.merchant_normalized_name,
+                )
+                if assignment is not None:
+                    selected = replace(
+                        command,
+                        category_id=assignment.category_id,
+                        category_source=assignment.source,
+                        category_classifier_version=assignment.version,
+                        category_confidence=assignment.confidence,
+                        category_overridden=assignment.overridden,
+                    )
+            return await repository.create_transaction(user_id, selected)
 
     async def get_transaction(
         self,

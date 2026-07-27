@@ -11,6 +11,8 @@ from app.ai.errors import AIError, ProposalReviewError
 from app.graphql.context import GraphQLContext
 from app.graphql.mappers import (
     map_category,
+    map_category_rule,
+    map_correction,
     map_financial_event_proposal,
     map_obligation,
     map_person,
@@ -29,8 +31,14 @@ from app.graphql.types import (
     CancelObligationResult,
     CancelObligationSuccess,
     ConflictProblem,
+    CorrectTransactionCategoryInput,
+    CorrectTransactionCategoryResult,
+    CorrectTransactionCategorySuccess,
     CreateCategoryInput,
     CreateCategoryResult,
+    CreateCategoryRuleInput,
+    CreateCategoryRuleResult,
+    CreateCategoryRuleSuccess,
     CreateCategorySuccess,
     CreatePayableInput,
     CreatePayableResult,
@@ -148,6 +156,58 @@ class Mutation:
             )
 
         return CreateTransactionSuccess(transaction=map_transaction(created))
+
+    @strawberry.mutation
+    async def correct_transaction_category(
+        self,
+        info: Info[GraphQLContext, None],
+        input: CorrectTransactionCategoryInput,
+    ) -> CorrectTransactionCategoryResult:
+        user_id = require_user_id(info.context)
+        try:
+            transaction_id = UUID(str(input.transaction_id))
+            category_id = UUID(str(input.category_id))
+        except ValueError:
+            return ValidationProblem(
+                code="INVALID_ID",
+                message="Transaction and category IDs must be UUIDs.",
+                field="transactionId",
+            )
+        try:
+            value = await info.context.categorization.correct(user_id, transaction_id, category_id)
+        except LedgerNotFoundError as exc:
+            return NotFoundProblem(code=exc.code, message=exc.message, field=exc.field)
+        return CorrectTransactionCategorySuccess(correction=map_correction(value))
+
+    @strawberry.mutation
+    async def create_category_rule(
+        self,
+        info: Info[GraphQLContext, None],
+        input: CreateCategoryRuleInput,
+    ) -> CreateCategoryRuleResult:
+        user_id = require_user_id(info.context)
+        try:
+            category_id = UUID(str(input.category_id))
+        except ValueError:
+            return ValidationProblem(
+                code="INVALID_CATEGORY_ID",
+                message="Category ID must be a UUID.",
+                field="categoryId",
+            )
+        try:
+            value = await info.context.categorization.create_rule(
+                user_id,
+                pattern=input.pattern,
+                category_id=category_id,
+                priority=input.priority,
+            )
+        except LedgerValidationError as exc:
+            return ValidationProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerNotFoundError as exc:
+            return NotFoundProblem(code=exc.code, message=exc.message, field=exc.field)
+        except LedgerConflictError as exc:
+            return ConflictProblem(code=exc.code, message=exc.message, field=exc.field)
+        return CreateCategoryRuleSuccess(rule=map_category_rule(value))
 
     @strawberry.mutation
     async def submit_financial_note(

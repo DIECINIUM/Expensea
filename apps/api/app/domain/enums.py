@@ -33,6 +33,17 @@ class TransactionSource(StrEnum):
     INGESTION = "ingestion"
 
 
+class CategorizationSource(StrEnum):
+    """Explainable source of a transaction's current category assignment."""
+
+    USER_RULE = "user_rule"
+    MERCHANT_MAP = "merchant_map"
+    VERIFIED_CORRECTION = "verified_correction"
+    RETRIEVAL = "retrieval"
+    MODEL = "model"
+    USER_OVERRIDE = "user_override"
+
+
 class ConnectorType(StrEnum):
     """Stable connector registry keys persisted with source connections."""
 

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.domain.enums import (
+    CategorizationSource,
     TransactionSource,
     TransactionStatus,
     TransactionType,
@@ -106,6 +107,22 @@ class LedgerTransaction(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         default=TransactionStatus.POSTED,
         server_default=text("'posted'"),
+    )
+    category_source: Mapped[CategorizationSource | None] = mapped_column(
+        Enum(
+            CategorizationSource,
+            name="categorization_source",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=enum_values,
+            length=24,
+        )
+    )
+    category_classifier_version: Mapped[str | None] = mapped_column(String(40))
+    category_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4, asdecimal=True))
+    category_overridden: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=text("false")
     )
 
 
