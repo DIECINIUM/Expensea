@@ -1,9 +1,9 @@
 # Implementation checklist
 
-**Last updated:** 2026-07-24
+**Last updated:** 2026-07-27
 
-**Current phase:** Phases 1–4 are implemented through review-first AI extraction and
-deterministic, owner-reviewable reconciliation. Phase 5 categorization is next.
+**Current phase:** Phases 1–5 are implemented through personalized deterministic
+categorization and correction memory. Phase 6 analytics and insights is next.
 
 **Rule:** implement each phase through bounded vertical slices whose acceptance
 behavior is written before code and checked from actual commands.
@@ -317,13 +317,32 @@ silently merged.
 
 ## Phase 5 — categorization and correction memory
 
-- [ ] Apply user rule → merchant map → verified correction → retrieval → model order.
-- [ ] Store classifier source, version, confidence, and override.
-- [ ] Add `UserCorrection` audit history.
-- [ ] Ensure corrections affect subsequent deterministic matching.
-- [ ] Establish non-vector retrieval baseline.
-- [ ] Add pgvector only if ADR-006 evaluation criterion is met.
-- [ ] Evaluate accuracy/macro F1 and per-category errors.
+- [x] Apply user rule → merchant map → verified correction → retrieval → model order.
+- [x] Store classifier source, version, confidence, and override.
+- [x] Add `UserCorrection` audit history.
+- [x] Ensure corrections affect subsequent deterministic matching.
+- [x] Establish non-vector retrieval baseline.
+- [x] Evaluate the ADR-006 criterion; pgvector is not added because the deterministic
+  baseline has no demonstrated quality gap on the committed fixture.
+- [x] Evaluate accuracy/macro F1 and per-category errors.
+
+Acceptance: owner corrections are append-only, teach subsequent merchant and text
+matches, and are visible through the GraphQL API and dashboard.
+
+### Phase 5 verification
+
+- [x] Revision `20260727_0007` upgrades, downgrades to `20260724_0006`, and
+  re-upgrades against PostgreSQL.
+- [x] PostgreSQL tests cover correction audit, merchant learning, rule precedence,
+  owner isolation, and existing ledger GraphQL behavior.
+- [x] The PostgreSQL-enabled backend suite passes: 201 tests, with the opt-in live
+  provider contract skipped.
+- [x] Ruff and strict mypy pass across 99 application source files.
+- [x] Frontend ESLint, Prettier, strict TypeScript, 35 tests, and production build
+  pass.
+- [x] The 12-case synthetic non-vector retrieval evaluation reports accuracy
+  `1.0000`, macro F1 `1.0000`, and no per-category errors. These values are
+  regression evidence, not production calibration.
 
 ## Phase 6 — deterministic analytics and insights
 

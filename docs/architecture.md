@@ -1,9 +1,10 @@
 # Architecture
 
-**Document status:** Phases 1–4 are implemented. The deterministic ledger,
+**Document status:** Phases 1–5 are implemented. The deterministic ledger,
 replay-safe ingestion/provenance model, connector contract, structured AI extraction,
 proposal review, duplicate reconciliation, GraphQL API, and React dashboard are
-implemented. Categorization, the finance agent, and production OAuth remain planned.
+implemented. Personalized categorization is also implemented; the finance agent and
+production OAuth remain planned.
 
 ## Goals
 

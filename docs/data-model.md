@@ -1,7 +1,7 @@
 # SpendGraph data model
 
-**Status: Phases 1–4 persistence implemented.** Alembic revisions
-`20260724_0002` through `20260724_0006` plus the SQLAlchemy models are the executable
+**Status: Phases 1–5 persistence implemented.** Alembic revisions
+`20260724_0002` through `20260727_0007` plus the SQLAlchemy models are the executable
 source of truth. This document explains that deployed contract and must change with
 future migrations.
 
@@ -32,7 +32,8 @@ Phase 4 adds:
 - candidate/resulting canonical transaction references; and
 - append-only reconciliation action history.
 
-`UserCorrection`, embeddings, and `AIInsight` remain in their later phases.
+`UserCorrection`, category rules, merchant category mappings, and assignment metadata
+are implemented. Embeddings and `AIInsight` remain in later phases.
 
 ## Ingestion and proposal relationships
 

@@ -1,0 +1,12 @@
+{"id":"travel_airport_taxi","description":"airport taxi ride","memory":[["airport taxi","Travel"],["restaurant dinner","Food"]],"expected":"Travel"}
+{"id":"food_cafe_breakfast","description":"cafe breakfast order","memory":[["cafe breakfast","Food"],["train ticket","Travel"]],"expected":"Food"}
+{"id":"grocery_weekly","description":"weekly grocery basket","memory":[["weekly grocery","Grocery"]],"expected":"Grocery"}
+{"id":"education_books","description":"online course books","memory":[["online course","Education"]],"expected":"Education"}
+{"id":"entertainment_stream","description":"music streaming plan","memory":[["music streaming","Entertainment"]],"expected":"Entertainment"}
+{"id":"travel_train","description":"intercity train ticket","memory":[["train ticket","Travel"]],"expected":"Travel"}
+{"id":"food_dinner","description":"family restaurant dinner","memory":[["restaurant dinner","Food"]],"expected":"Food"}
+{"id":"weak_unknown","description":"monthly apartment rent","memory":[["airport taxi","Travel"]],"expected":null}
+{"id":"tie_unknown","description":"coffee shop","memory":[["coffee shop","Food"],["coffee shop","Entertainment"]],"expected":null}
+{"id":"grocery_market","description":"fresh market vegetables","memory":[["fresh market","Grocery"]],"expected":"Grocery"}
+{"id":"education_tuition","description":"school tuition payment","memory":[["school tuition","Education"]],"expected":"Education"}
+{"id":"entertainment_movie","description":"weekend movie tickets","memory":[["movie tickets","Entertainment"]],"expected":"Entertainment"}

@@ -6,7 +6,7 @@ SpendGraph AI is a deterministic personal-finance ledger built around one rule:
 
 ## Project status
 
-**Phases 1–4 are implemented; Phase 5 categorization is next.** The repository now
+**Phases 1–5 are implemented; Phase 6 analytics is next.** The repository now
 contains:
 
 - exact-decimal transactions with merchants and categories;
@@ -22,6 +22,8 @@ contains:
   transitions;
 - deterministic owner-scoped duplicate scoring with merge/review/new decisions,
   preserved evidence, append-only audit, and safe unmerge;
+- personalized deterministic categorization using owner rules, verified merchant
+  mappings, correction memory, and non-vector text retrieval;
 - a dashboard AI inbox with informal-note input, Keep JSON import, tags, category
   suggestions, review reasons, and canonical-ledger refresh;
 - a dashboard duplicate-review inbox with scores, reason codes, merge,
@@ -34,8 +36,8 @@ AI output never posts itself. It remains an untrusted proposal until an authenti
 user approves it and deterministic services revalidate the canonical transaction,
 obligation, or recurring payment. Transaction approvals pass through reconciliation;
 ambiguous matches require a second explicit merge or keep-separate decision.
-Personalized categorization, the read-only finance agent, and production Gmail OAuth
-remain later phases.
+Extended deterministic insights, the read-only finance agent, and production Gmail
+OAuth remain later phases.
 
 ## Run it with Docker
 
@@ -258,7 +260,8 @@ user/password/name later does not rewrite an existing database.
 
 See [Phase 1 ledger](docs/phase1-ledger.md),
 [Phase 2 ingestion](docs/phase2-ingestion.md), [AI design](docs/ai-design.md),
-[Phase 4 reconciliation](docs/phase4-reconciliation.md), and
+[Phase 4 reconciliation](docs/phase4-reconciliation.md),
+[Phase 5 categorization](docs/phase5-categorization.md), and
 [Data model](docs/data-model.md) for the complete contract.
 
 ## Architecture
@@ -322,6 +325,7 @@ GraphiQL is available in validated debug environments at the GraphQL endpoint.
 | Run dependency audits | `make audit` |
 | Evaluate AI extraction on labelled synthetic notes | `make eval-extraction` |
 | Evaluate duplicate scoring on labelled synthetic pairs | `make eval-reconciliation` |
+| Evaluate deterministic category retrieval | `make eval-categorization` |
 | Run the aggregate local gate | `make check` |
 
 Local, non-container processes require Python 3.12+, Node.js 24+, and `make setup`.
@@ -338,7 +342,7 @@ make dev-web
 
 The latest local verification includes:
 
-- 197 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
+- 201 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
   from the deterministic suite;
 - strict mypy, Ruff lint, and Ruff formatting checks;
 - 35 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
@@ -347,6 +351,8 @@ The latest local verification includes:
 - a 24-pair reconciliation benchmark reporting automatic-merge precision `1.0000`,
   recall `0.5882`, F1 `0.7407`, review rate `0.4167`, zero false merges, and zero
   false-new decisions on synthetic fixtures;
+- a 12-case categorization retrieval baseline reporting accuracy `1.0000`, macro F1
+  `1.0000`, and no per-category errors on synthetic fixtures;
 - Compose configuration validation; and
 - migration and idempotent seeding from a separate empty Docker volume.
 
@@ -369,6 +375,7 @@ the remote checks for a pushed commit.
 │   ├── ai-design.md
 │   ├── phase1-ledger.md
 │   ├── phase2-ingestion.md
+│   ├── phase5-categorization.md
 │   ├── security.md
 │   └── implementation-checklist.md
 ├── evals/                    # Versioned extraction/reconciliation evaluation fixtures
@@ -389,7 +396,7 @@ the remote checks for a pushed commit.
 | 2 | Raw events, evidence, connector contract, replay-safe ingestion | **Complete** |
 | 3 | Structured natural-language extraction and review | **Complete review-first slice with synthetic evaluation harness** |
 | 4 | Duplicate reconciliation | **Complete with owner review and synthetic evaluation** |
-| 5 | Personalized categorization and correction memory | Planned |
+| 5 | Personalized categorization and correction memory | **Complete with non-vector baseline** |
 | 6 | Extended deterministic analytics and grounded explanations | Planned |
 | 7 | Read-only finance agent over typed service tools | Planned |
 | 8+ | Authorized external connectors and production hardening | Planned |
