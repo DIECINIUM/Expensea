@@ -22,7 +22,7 @@
     "@hookform/resolvers": "^5.4.0",
     "clsx": "^2.1.1",
     "graphql": "^17.0.2",
-    "lucide-react": "^1.26.0",
+    "lucide-react": "^1.28.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
