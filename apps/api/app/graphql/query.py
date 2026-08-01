@@ -10,6 +10,7 @@ from strawberry.types import Info
 
 from app.graphql.context import GraphQLContext
 from app.graphql.mappers import (
+    map_analytics_report,
     map_category,
     map_category_spending,
     map_correction,
@@ -29,6 +30,7 @@ from app.graphql.mappers import (
 )
 from app.graphql.safety import require_user_id, resolve_safely
 from app.graphql.types import (
+    AnalyticsReportType,
     CategorySpendingType,
     CategoryType,
     FinancialEventProposalType,
@@ -143,6 +145,19 @@ class Query:
             info.context,
         )
         return [map_merchant_spending(value) for value in values]
+
+    @strawberry.field
+    async def analytics_report(
+        self,
+        info: Info[GraphQLContext, None],
+        currency: str | None = None,
+    ) -> AnalyticsReportType:
+        user_id = require_user_id(info.context)
+        value = await resolve_safely(
+            info.context.analytics.report(user_id, currency=currency),
+            info.context,
+        )
+        return map_analytics_report(value)
 
     @strawberry.field
     async def transactions(

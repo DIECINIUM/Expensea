@@ -1,0 +1,1 @@
+"""Deterministic, grounded financial analytics."""

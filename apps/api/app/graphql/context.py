@@ -7,6 +7,7 @@ from strawberry.fastapi import BaseContext
 from app.ai.contracts import StructuredCompletionProvider
 from app.ai.extraction import FinancialNoteExtractor
 from app.ai.proposal_service import FinancialProposalService
+from app.analytics.service import AnalyticsService
 from app.auth.principal import Principal
 from app.categorization.service import CategorizationService
 from app.core.config import Settings
@@ -38,6 +39,7 @@ class GraphQLContext(BaseContext):
         self.principal = principal
         self.ledger = LedgerService(database)
         self.categorization = CategorizationService(database)
+        self.analytics = AnalyticsService(database)
         self.obligations = ObligationService(database)
         self.recurring = RecurringPaymentService(database)
         reconciliation_policy = ReconciliationPolicy(

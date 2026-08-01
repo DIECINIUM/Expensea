@@ -5,6 +5,7 @@ from decimal import Decimal
 import strawberry
 
 from app.ai.proposal_dto import FinancialEventProposalView
+from app.analytics.dto import AnalyticsReport
 from app.categorization.dto import CategoryRuleView, CorrectionView
 from app.domain.enums import (
     ProposalStatus,
@@ -19,7 +20,9 @@ from app.domain.enums import (
     TransactionType as DomainTransactionType,
 )
 from app.graphql.types import (
+    AnalyticsReportType,
     CategorizationSourceValue,
+    CategoryContributionType,
     CategoryRuleType,
     CategorySpendingType,
     CategoryType,
@@ -27,11 +30,13 @@ from app.graphql.types import (
     FinancialEventKindValue,
     FinancialEventProposalType,
     FinancialSummaryType,
+    GroundedInsightType,
     MerchantSpendingType,
     MonthlySpendingType,
     ObligationStatusValue,
     ObligationType,
     PageInfoType,
+    PeriodMetricsType,
     PersonType,
     ProposalStatusValue,
     ReconciliationActionType,
@@ -196,6 +201,57 @@ def map_monthly_spending(value: MonthlySpending) -> MonthlySpendingType:
         month_start=value.month_start,
         amount=money_string(value.amount),
         currency=value.currency,
+    )
+
+
+def map_analytics_report(value: AnalyticsReport) -> AnalyticsReportType:
+    return AnalyticsReportType(
+        currency=value.currency,
+        current_period_start=value.current_period_start,
+        current_period_end=value.current_period_end,
+        previous_period_start=value.previous_period_start,
+        previous_period_end=value.previous_period_end,
+        current=PeriodMetricsType(
+            spent=money_string(value.current.spent),
+            transaction_count=value.current.transaction_count,
+            average_size=money_string(value.current.average_size),
+        ),
+        previous=PeriodMetricsType(
+            spent=money_string(value.previous.spent),
+            transaction_count=value.previous.transaction_count,
+            average_size=money_string(value.previous.average_size),
+        ),
+        total_change=money_string(value.total_change),
+        count_change=value.count_change,
+        average_size_change=money_string(value.average_size_change),
+        contributions=[
+            CategoryContributionType(
+                category_id=(
+                    strawberry.ID(str(item.category_id)) if item.category_id is not None else None
+                ),
+                category_name=item.category_name,
+                current_amount=money_string(item.current_amount),
+                previous_amount=money_string(item.previous_amount),
+                change=money_string(item.change),
+            )
+            for item in value.contributions
+        ],
+        insights=[
+            GroundedInsightType(
+                code=item.code,
+                title=item.title,
+                detail=item.detail,
+                amount=money_string(item.amount) if item.amount is not None else None,
+                percentage=item.percentage,
+                supporting_transaction_ids=[
+                    strawberry.ID(str(identifier)) for identifier in item.supporting_transaction_ids
+                ],
+                supporting_obligation_ids=[
+                    strawberry.ID(str(identifier)) for identifier in item.supporting_obligation_ids
+                ],
+            )
+            for item in value.insights
+        ],
     )
 
 

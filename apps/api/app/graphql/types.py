@@ -225,6 +225,49 @@ class MonthlySpendingType:
 
 
 @strawberry.type
+class PeriodMetricsType:
+    spent: str
+    transaction_count: int
+    average_size: str
+
+
+@strawberry.type
+class CategoryContributionType:
+    category_id: strawberry.ID | None
+    category_name: str
+    current_amount: str
+    previous_amount: str
+    change: str
+
+
+@strawberry.type
+class GroundedInsightType:
+    code: str
+    title: str
+    detail: str
+    amount: str | None
+    percentage: int | None
+    supporting_transaction_ids: list[strawberry.ID]
+    supporting_obligation_ids: list[strawberry.ID]
+
+
+@strawberry.type
+class AnalyticsReportType:
+    currency: str
+    current_period_start: date
+    current_period_end: date
+    previous_period_start: date
+    previous_period_end: date
+    current: PeriodMetricsType
+    previous: PeriodMetricsType
+    total_change: str
+    count_change: int
+    average_size_change: str
+    contributions: list[CategoryContributionType]
+    insights: list[GroundedInsightType]
+
+
+@strawberry.type
 class RecurringPaymentType:
     id: strawberry.ID
     merchant_name: str
