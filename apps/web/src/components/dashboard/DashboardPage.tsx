@@ -202,6 +202,7 @@ export function DashboardPage() {
 
   return (
     <Dashboard
+      analyticsReport={data.analyticsReport}
       categories={data.categories}
       data={presentation}
       isEmpty={dashboardIsEmpty(data)}

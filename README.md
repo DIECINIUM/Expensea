@@ -6,7 +6,7 @@ SpendGraph AI is a deterministic personal-finance ledger built around one rule:
 
 ## Project status
 
-**Phases 1–5 are implemented; Phase 6 analytics is next.** The repository now
+**Phases 1–6 are implemented; Phase 7 read-only finance agent is next.** The repository now
 contains:
 
 - exact-decimal transactions with merchants and categories;
@@ -24,6 +24,8 @@ contains:
   preserved evidence, append-only audit, and safe unmerge;
 - personalized deterministic categorization using owner rules, verified merchant
   mappings, correction memory, and non-vector text retrieval;
+- month-over-month contribution analysis and grounded deterministic signals for
+  trends, large transactions, concentration, recurring patterns, and overdue debt;
 - a dashboard AI inbox with informal-note input, Keep JSON import, tags, category
   suggestions, review reasons, and canonical-ledger refresh;
 - a dashboard duplicate-review inbox with scores, reason codes, merge,
@@ -36,8 +38,7 @@ AI output never posts itself. It remains an untrusted proposal until an authenti
 user approves it and deterministic services revalidate the canonical transaction,
 obligation, or recurring payment. Transaction approvals pass through reconciliation;
 ambiguous matches require a second explicit merge or keep-separate decision.
-Extended deterministic insights, the read-only finance agent, and production Gmail
-OAuth remain later phases.
+The read-only finance agent and production Gmail OAuth remain later phases.
 
 ## Run it with Docker
 
@@ -261,7 +262,8 @@ user/password/name later does not rewrite an existing database.
 See [Phase 1 ledger](docs/phase1-ledger.md),
 [Phase 2 ingestion](docs/phase2-ingestion.md), [AI design](docs/ai-design.md),
 [Phase 4 reconciliation](docs/phase4-reconciliation.md),
-[Phase 5 categorization](docs/phase5-categorization.md), and
+[Phase 5 categorization](docs/phase5-categorization.md),
+[Phase 6 analytics](docs/phase6-analytics.md), and
 [Data model](docs/data-model.md) for the complete contract.
 
 ## Architecture
@@ -301,6 +303,8 @@ The current API includes:
 - locked proposal approval/rejection with typed client-safe errors;
 - reconciliation cases with score, reasons, source/candidate comparison, and action
   history; and
+- deterministic month comparison, category contributions, and grounded insight
+  records; and
 - typed merge, keep-separate, and unmerge mutations.
 
 GraphiQL is available in validated debug environments at the GraphQL endpoint.
@@ -342,10 +346,10 @@ make dev-web
 
 The latest local verification includes:
 
-- 201 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
+- 206 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
   from the deterministic suite;
 - strict mypy, Ruff lint, and Ruff formatting checks;
-- 35 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
+- 37 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
   build;
 - Alembic upgrade/downgrade/re-upgrade coverage;
 - a 24-pair reconciliation benchmark reporting automatic-merge precision `1.0000`,
@@ -376,6 +380,7 @@ the remote checks for a pushed commit.
 │   ├── phase1-ledger.md
 │   ├── phase2-ingestion.md
 │   ├── phase5-categorization.md
+│   ├── phase6-analytics.md
 │   ├── security.md
 │   └── implementation-checklist.md
 ├── evals/                    # Versioned extraction/reconciliation evaluation fixtures
@@ -397,7 +402,7 @@ the remote checks for a pushed commit.
 | 3 | Structured natural-language extraction and review | **Complete review-first slice with synthetic evaluation harness** |
 | 4 | Duplicate reconciliation | **Complete with owner review and synthetic evaluation** |
 | 5 | Personalized categorization and correction memory | **Complete with non-vector baseline** |
-| 6 | Extended deterministic analytics and grounded explanations | Planned |
+| 6 | Extended deterministic analytics and grounded explanations | **Complete** |
 | 7 | Read-only finance agent over typed service tools | Planned |
 | 8+ | Authorized external connectors and production hardening | Planned |
 

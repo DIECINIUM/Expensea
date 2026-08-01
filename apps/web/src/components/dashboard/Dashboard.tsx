@@ -4,6 +4,7 @@ import { CategoryBreakdown } from './CategoryBreakdown';
 import { Card } from './Card';
 import { FinancialNotesPanel } from './FinancialNotesPanel';
 import { ManualTransactionForm } from './ManualTransactionForm';
+import { InsightsPanel } from './InsightsPanel';
 import { ObligationsPanel } from './ObligationsPanel';
 import { PeoplePanel } from './PeoplePanel';
 import { RecentActivity } from './RecentActivity';
@@ -14,6 +15,7 @@ import { SummaryCard } from './SummaryCard';
 import type { DashboardPresentationData } from './types';
 import type {
   DashboardCategoryData,
+  AnalyticsReportData,
   ObligationData,
   PersonData,
   RecurringPaymentData,
@@ -23,6 +25,7 @@ import type { ReconciliationCaseData } from '../../graphql/reconciliation';
 
 interface DashboardProps {
   readonly categories: readonly DashboardCategoryData[];
+  readonly analyticsReport: AnalyticsReportData;
   readonly data: DashboardPresentationData;
   readonly isEmpty: boolean;
   readonly isRefreshing: boolean;
@@ -38,6 +41,7 @@ interface DashboardProps {
 
 export function Dashboard({
   categories,
+  analyticsReport,
   data,
   isEmpty,
   isRefreshing,
@@ -159,6 +163,7 @@ export function Dashboard({
         )}
 
         <section id="intelligence" className="mt-8 scroll-mt-24">
+          <InsightsPanel report={analyticsReport} />
           <FinancialNotesPanel
             proposals={financialEventProposals}
             onChanged={onDataChanged}

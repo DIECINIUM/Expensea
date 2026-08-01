@@ -2,8 +2,8 @@
 
 **Last updated:** 2026-07-27
 
-**Current phase:** Phases 1–5 are implemented through personalized deterministic
-categorization and correction memory. Phase 6 analytics and insights is next.
+**Current phase:** Phases 1–6 are implemented through deterministic analytics and
+grounded insights. Phase 7 read-only finance agent is next.
 
 **Rule:** implement each phase through bounded vertical slices whose acceptance
 behavior is written before code and checked from actual commands.
@@ -346,15 +346,27 @@ matches, and are visible through the GraphQL API and dashboard.
 
 ## Phase 6 — deterministic analytics and insights
 
-- [ ] Spending by category, merchant, and period.
-- [ ] Contribution analysis for total, count, and average-size changes.
-- [ ] Conservative recurring-payment detector requiring repeated observations.
-- [ ] Deterministic large-transaction, trend, forgotten-debt, and concentration rules.
-- [ ] Ground every insight in supporting record IDs and computed data.
-- [ ] Unit-test period boundaries, zero baselines, refunds, and currencies.
+- [x] Spending by category, merchant, and period.
+- [x] Contribution analysis for total, count, and average-size changes.
+- [x] Conservative recurring-payment detector requiring repeated observations.
+- [x] Deterministic large-transaction, trend, forgotten-debt, and concentration rules.
+- [x] Ground every insight in supporting record IDs and computed data.
+- [x] Unit-test period boundaries, zero baselines, refunds, and currencies.
 
 Acceptance: “Why did spending change?” has a complete structured answer before an LLM
 summarizes it.
+
+### Phase 6 verification
+
+- [x] Read-only analytics require no persistence migration.
+- [x] PostgreSQL tests prove owner, currency, status, period, and refund isolation.
+- [x] Pure tests cover zero baselines, exact decimal averages, contribution
+  reconciliation, conservative recurring detection, and grounded rule output.
+- [x] The PostgreSQL-enabled backend suite passes: 206 tests, with the opt-in live
+  provider contract skipped.
+- [x] Ruff and strict mypy pass across 104 application source files.
+- [x] Frontend ESLint, Prettier, strict TypeScript, 37 tests, and production build
+  pass.
 
 ## Phase 7 — read-only finance agent
 

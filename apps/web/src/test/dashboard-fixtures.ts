@@ -49,6 +49,46 @@ export const dashboardQueryData = {
       currency: 'INR',
     },
   ],
+  analyticsReport: {
+    currency: 'INR',
+    currentPeriodStart: '2026-07-01',
+    currentPeriodEnd: '2026-08-01',
+    previousPeriodStart: '2026-06-01',
+    previousPeriodEnd: '2026-07-01',
+    current: {
+      spent: '18540.0000',
+      transactionCount: 32,
+      averageSize: '579.3750',
+    },
+    previous: {
+      spent: '20200.0000',
+      transactionCount: 30,
+      averageSize: '673.3333',
+    },
+    totalChange: '-1660.0000',
+    countChange: 2,
+    averageSizeChange: '-93.9583',
+    contributions: [
+      {
+        categoryId: 'category-food',
+        categoryName: 'Food & dining',
+        currentAmount: '5420.0000',
+        previousAmount: '6000.0000',
+        change: '-580.0000',
+      },
+    ],
+    insights: [
+      {
+        code: 'merchant_concentration',
+        title: 'Merchant concentration',
+        detail: 'Swiggy represents at least half of positive spending.',
+        amount: '10000.0000',
+        percentage: 54,
+        supportingTransactionIds: ['transaction-1'],
+        supportingObligationIds: [],
+      },
+    ],
+  },
   transactions: {
     edges: [
       {

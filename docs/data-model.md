@@ -1,6 +1,6 @@
 # SpendGraph data model
 
-**Status: Phases 1–5 persistence implemented.** Alembic revisions
+**Status: Phases 1–5 persistence and Phase 6 read-only analytics implemented.** Alembic revisions
 `20260724_0002` through `20260727_0007` plus the SQLAlchemy models are the executable
 source of truth. This document explains that deployed contract and must change with
 future migrations.

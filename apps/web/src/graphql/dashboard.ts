@@ -54,6 +54,42 @@ export const DASHBOARD_QUERY = gql`
       amount
       currency
     }
+    analyticsReport {
+      currency
+      currentPeriodStart
+      currentPeriodEnd
+      previousPeriodStart
+      previousPeriodEnd
+      current {
+        spent
+        transactionCount
+        averageSize
+      }
+      previous {
+        spent
+        transactionCount
+        averageSize
+      }
+      totalChange
+      countChange
+      averageSizeChange
+      contributions {
+        categoryId
+        categoryName
+        currentAmount
+        previousAmount
+        change
+      }
+      insights {
+        code
+        title
+        detail
+        amount
+        percentage
+        supportingTransactionIds
+        supportingObligationIds
+      }
+    }
     transactions(first: 10) {
       edges {
         cursor
@@ -180,6 +216,43 @@ export interface MonthlySpendingData {
   readonly currency: string;
 }
 
+export interface AnalyticsReportData {
+  readonly currency: string;
+  readonly currentPeriodStart: string;
+  readonly currentPeriodEnd: string;
+  readonly previousPeriodStart: string;
+  readonly previousPeriodEnd: string;
+  readonly current: {
+    readonly spent: string;
+    readonly transactionCount: number;
+    readonly averageSize: string;
+  };
+  readonly previous: {
+    readonly spent: string;
+    readonly transactionCount: number;
+    readonly averageSize: string;
+  };
+  readonly totalChange: string;
+  readonly countChange: number;
+  readonly averageSizeChange: string;
+  readonly contributions: readonly {
+    readonly categoryId: string | null;
+    readonly categoryName: string;
+    readonly currentAmount: string;
+    readonly previousAmount: string;
+    readonly change: string;
+  }[];
+  readonly insights: readonly {
+    readonly code: string;
+    readonly title: string;
+    readonly detail: string;
+    readonly amount: string | null;
+    readonly percentage: number | null;
+    readonly supportingTransactionIds: readonly string[];
+    readonly supportingObligationIds: readonly string[];
+  }[];
+}
+
 export interface DashboardTransactionNode {
   readonly id: string;
   readonly amount: string;
@@ -258,6 +331,7 @@ export interface DashboardQueryData {
   readonly recurringSummary: RecurringSummaryData;
   readonly spendingByCategory: readonly SpendingByCategoryData[];
   readonly monthlySpending: readonly MonthlySpendingData[];
+  readonly analyticsReport: AnalyticsReportData;
   readonly transactions: TransactionConnectionData;
   readonly categories: readonly DashboardCategoryData[];
   readonly people: readonly PersonData[];
