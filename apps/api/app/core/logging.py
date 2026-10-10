@@ -12,6 +12,7 @@ from time import perf_counter
 from typing import Any, ClassVar
 from uuid import uuid4
 
+from opentelemetry.trace import get_current_span
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -71,6 +72,10 @@ class JsonFormatter(logging.Formatter):
         request_id = current_request_id()
         if request_id is not None:
             payload["request_id"] = request_id
+        span_context = get_current_span().get_span_context()
+        if span_context.is_valid:
+            payload["trace_id"] = f"{span_context.trace_id:032x}"
+            payload["span_id"] = f"{span_context.span_id:016x}"
 
         payload.update(
             {
@@ -118,6 +123,11 @@ def _request_id_from(request: Request) -> str:
     return candidate if _REQUEST_ID_PATTERN.fullmatch(candidate) else uuid4().hex
 
 
+def _route_path(request: Request) -> str:
+    route = request.scope.get("route")
+    return str(getattr(route, "path", "unmatched"))
+
+
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Correlate each HTTP request and emit one structured completion event."""
 
@@ -142,7 +152,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 "request.failed",
                 extra={
                     "http_method": request.method,
-                    "http_path": request.url.path,
+                    "http_path": _route_path(request),
                     "duration_ms": round((perf_counter() - started_at) * 1000, 3),
                     "error_type": type(exc).__name__,
                 },
@@ -158,7 +168,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 "request.completed",
                 extra={
                     "http_method": request.method,
-                    "http_path": request.url.path,
+                    "http_path": _route_path(request),
                     "http_status": response.status_code,
                     "duration_ms": round((perf_counter() - started_at) * 1000, 3),
                 },

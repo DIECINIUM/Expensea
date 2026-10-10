@@ -122,15 +122,20 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate Compose
-        run: docker compose --env-file .env.example config --quiet
+        run: |
+          docker compose --env-file .env.example config --quiet
+          PUBLIC_HOSTNAME=ci.example.invalid PRODUCTION_ENV_FILE=.env.example \
+            docker compose --env-file .env.example -f docker-compose.production.yml config --quiet
 
       - name: Build API targets
         run: |
           docker build --target development --tag spendgraph-api:ci-dev apps/api
           docker build --target production --tag spendgraph-api:ci-prod apps/api
 
-      - name: Build web development target
-        run: docker build --target development --tag spendgraph-web:ci apps/web
+      - name: Build web targets
+        run: |
+          docker build --target development --tag spendgraph-web:ci-dev apps/web
+          docker build --target production --tag spendgraph-web:ci-prod apps/web
 
   foundation-smoke:
     name: Web to API smoke
