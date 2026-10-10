@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.categorization.policy import CLASSIFIER_VERSION
 from app.core.config import (
     DEFAULT_DEV_USER_ID,
     AppEnvironment,
@@ -20,6 +21,7 @@ from app.core.config import (
 )
 from app.db.session import Database
 from app.domain.enums import (
+    CategorizationSource,
     ObligationStatus,
     RecurrenceRule,
     RecurringPaymentStatus,
@@ -205,6 +207,10 @@ async def _insert_demo_rows(
                 transaction_type=TransactionType.EXPENSE,
                 merchant_id=_FRESH_BASKET_MERCHANT_ID,
                 category_id=_GROCERY_CATEGORY_ID,
+                category_source=CategorizationSource.USER_OVERRIDE,
+                category_classifier_version=CLASSIFIER_VERSION,
+                category_confidence=Decimal("1.0000"),
+                category_overridden=True,
                 description="Weekly groceries",
                 transaction_date=_local_instant(grocery_date, hour=18),
                 source=TransactionSource.MANUAL,
@@ -218,6 +224,10 @@ async def _insert_demo_rows(
                 transaction_type=TransactionType.EXPENSE,
                 merchant_id=_SWIGGY_MERCHANT_ID,
                 category_id=_FOOD_DELIVERY_CATEGORY_ID,
+                category_source=CategorizationSource.USER_OVERRIDE,
+                category_classifier_version=CLASSIFIER_VERSION,
+                category_confidence=Decimal("1.0000"),
+                category_overridden=True,
                 description="Dinner delivery",
                 transaction_date=_local_instant(delivery_date, hour=20),
                 source=TransactionSource.MANUAL,
@@ -244,6 +254,10 @@ async def _insert_demo_rows(
                 transaction_type=TransactionType.REFUND,
                 merchant_id=_LOCAL_STORE_MERCHANT_ID,
                 category_id=_SHOPPING_CATEGORY_ID,
+                category_source=CategorizationSource.USER_OVERRIDE,
+                category_classifier_version=CLASSIFIER_VERSION,
+                category_confidence=Decimal("1.0000"),
+                category_overridden=True,
                 description="Returned item refund",
                 transaction_date=_local_instant(refund_date, hour=14),
                 source=TransactionSource.MANUAL,
@@ -257,6 +271,10 @@ async def _insert_demo_rows(
                 transaction_type=TransactionType.SHARED_EXPENSE,
                 merchant_id=None,
                 category_id=_TRAVEL_CATEGORY_ID,
+                category_source=CategorizationSource.USER_OVERRIDE,
+                category_classifier_version=CLASSIFIER_VERSION,
+                category_confidence=Decimal("1.0000"),
+                category_overridden=True,
                 description="Shared airport cab",
                 transaction_date=_local_instant(shared_cab_date, hour=9),
                 source=TransactionSource.MANUAL,
