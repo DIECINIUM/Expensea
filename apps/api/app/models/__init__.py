@@ -1,5 +1,6 @@
 """Phase 1 relational ledger models."""
 
+from app.models.auth import AuthIdentity, AuthSession, GmailCredential, OAuthState
 from app.models.catalog import Category, Merchant
 from app.models.categorization import CategoryRule, MerchantCategoryMap, UserCorrection
 from app.models.ingestion import (
@@ -9,6 +10,7 @@ from app.models.ingestion import (
     RawEventProcessing,
     SourceConnection,
 )
+from app.models.job import Job
 from app.models.obligation import ObligationSettlement, Payable, Receivable
 from app.models.person import Person
 from app.models.proposal import FinancialEventProposal
@@ -18,14 +20,19 @@ from app.models.transaction import LedgerTransaction
 from app.models.user import User
 
 __all__ = [
+    "AuthIdentity",
+    "AuthSession",
     "Category",
     "CategoryRule",
     "Evidence",
     "FinancialEventProposal",
+    "GmailCredential",
+    "Job",
     "LedgerTransaction",
     "Merchant",
     "MerchantCategoryMap",
     "NormalizedFinancialEvent",
+    "OAuthState",
     "ObligationSettlement",
     "Payable",
     "Person",

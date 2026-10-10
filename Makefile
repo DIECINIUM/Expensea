@@ -8,7 +8,7 @@ API_PIP := $(VENV)/bin/pip
 API_DIR := apps/api
 WEB_DIR := apps/web
 
-.PHONY: help setup lock env db-up bootstrap migrate seed dev stop dev-api dev-web smoke test test-api test-web lint lint-api lint-web typecheck audit format build eval-extraction eval-reconciliation eval-categorization check
+.PHONY: help setup lock env db-up bootstrap migrate seed dev stop dev-api dev-web worker smoke test test-api test-web lint lint-api lint-web typecheck audit format build eval-extraction eval-reconciliation eval-categorization eval-agent check prod-config prod prod-stop prod-smoke backup restore
 
 help:
 	@echo "SpendGraph AI development commands"
@@ -30,7 +30,15 @@ help:
 	@echo "  make eval-extraction  Evaluate configured AI on labelled synthetic notes"
 	@echo "  make eval-reconciliation  Evaluate deterministic duplicate decisions"
 	@echo "  make eval-categorization  Evaluate deterministic correction retrieval"
+	@echo "  make eval-agent  Evaluate read-only agent routing, facts, grounding and safety"
 	@echo "  make check      Run lint, type checks, tests, and build"
+	@echo "  make worker     Run the durable-job worker locally"
+	@echo "  make prod-config  Validate .env.production and production Compose"
+	@echo "  make prod       Start production containers (requires configured OIDC/database/domain)"
+	@echo "  make prod-stop  Stop production containers without deleting volumes"
+	@echo "  make prod-smoke DEPLOYMENT_URL=https://host  Verify deployed HTTPS services"
+	@echo "  make backup BACKUP_PATH=path  Back up the privately configured PG* database"
+	@echo "  make restore BACKUP_PATH=path  Restore to a new spendgraph_restore_* database"
 
 env:
 	@test -f .env || cp .env.example .env
@@ -82,6 +90,30 @@ dev-web: env
 	@set -a; . ./.env; set +a; \
 	exec npm --prefix $(WEB_DIR) run dev -- \
 		--host "$${WEB_HOST:-127.0.0.1}" --port "$${WEB_PORT:-5173}"
+
+worker: env
+	@set -a; . ./.env; set +a; \
+	PYTHONPATH=$(API_DIR) exec $(API_PYTHON) -m app.jobs.worker
+
+prod-config:
+	@test -f .env.production || { echo "Configure the ignored .env.production first."; exit 1; }
+	docker compose --env-file .env.production -f docker-compose.production.yml config --quiet
+
+prod: prod-config
+	docker compose --env-file .env.production -f docker-compose.production.yml up --build -d
+
+prod-stop:
+	docker compose --env-file .env.production -f docker-compose.production.yml down
+
+prod-smoke:
+	@test -n "$(DEPLOYMENT_URL)" || { echo "Set DEPLOYMENT_URL=https://your-host"; exit 1; }
+	sh scripts/smoke-deployment.sh "$(DEPLOYMENT_URL)"
+
+backup:
+	sh scripts/backup-database.sh "$(BACKUP_PATH)"
+
+restore:
+	sh scripts/restore-database.sh "$(BACKUP_PATH)"
 
 smoke: env
 	@set -a; . ./.env; set +a; \
@@ -136,5 +168,8 @@ eval-reconciliation:
 eval-categorization:
 	@PYTHONPATH=$(API_DIR) $(API_PYTHON) evals/run_categorization.py \
 		--dataset evals/categorization/v1.jsonl
+
+eval-agent:
+	$(API_PYTHON) evals/agent/run.py
 
 check: lint typecheck test build audit

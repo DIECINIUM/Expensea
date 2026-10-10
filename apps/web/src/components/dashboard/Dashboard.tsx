@@ -3,6 +3,9 @@ import { Plus, ReceiptText } from 'lucide-react';
 import { CategoryBreakdown } from './CategoryBreakdown';
 import { Card } from './Card';
 import { FinancialNotesPanel } from './FinancialNotesPanel';
+import { FinanceAgentPanel } from './FinanceAgentPanel';
+import { ConnectionPanel } from './ConnectionPanel';
+import { JobStatusPanel } from './JobStatusPanel';
 import { ManualTransactionForm } from './ManualTransactionForm';
 import { InsightsPanel } from './InsightsPanel';
 import { ObligationsPanel } from './ObligationsPanel';
@@ -164,6 +167,9 @@ export function Dashboard({
 
         <section id="intelligence" className="mt-8 scroll-mt-24">
           <InsightsPanel report={analyticsReport} />
+          <FinanceAgentPanel />
+          <ConnectionPanel onChanged={onDataChanged} />
+          <JobStatusPanel onChanged={onDataChanged} />
           <FinancialNotesPanel
             proposals={financialEventProposals}
             onChanged={onDataChanged}
