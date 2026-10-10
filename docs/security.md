@@ -1,6 +1,6 @@
 # Security and privacy
 
-**Document status:** Phase 4 review-first threat model. The current repository has a
+**Document status:** Review-first threat model including local OIDC/Gmail controls. The current repository has a
 tested development ledger, ingestion pipeline, AI proposal workflow, and
 deterministic duplicate reconciliation, but it is not a production security claim.
 Controls are labelled:
@@ -68,6 +68,46 @@ The design considers:
 - dependency or CI supply-chain compromise.
 
 ## Implemented controls
+
+### OIDC identity and explicit Gmail consent (local implementation)
+
+- App login uses configurable OIDC discovery and authorization-code/PKCE. Exact
+  callbacks, single-use expiring state bound to an HttpOnly browser cookie, signed
+  JWT validation with PyJWT/cryptography, issuer/audience/nonce/time checks and
+  authorized-party checks prevent callback substitution, replay and token confusion.
+- Ledger owners are mapped by the unique `(issuer, subject)` pair on the server.
+  Email claims never link accounts. Sessions are random opaque cookies; only token
+  hashes are stored. Session rotation, expiry and local logout are enforced.
+- Cookies are host-only, HttpOnly and SameSite=Lax. Secure cookies and HTTPS
+  configuration are mandatory in deployed tiers. Cookie mutations require an exact
+  configured Origin plus a session-bound CSRF header, including GraphQL mutations.
+  Development identity bypass is explicit and rejected in staging/production.
+- Gmail is separate from login: official read-only OAuth with offline consent,
+  state bound to owner and browser, single-use expiry and PKCE. Refresh tokens are
+  authenticated-encrypted with a private external environment Fernet keyring.
+  Writes use the active key ID; old IDs remain decryptable and refresh rotates
+  ciphertext. Missing keys fail closed. This is **not managed production KMS**.
+- One bounded Gmail page enters the existing minimized, replay-safe ingestion
+  pipeline and remains review-first; no sending, mailbox-wide automatic crawling,
+  browser-held access tokens or automatic ledger approval is introduced. Connection
+  cursors are partitioned by hashed account identity, including account switches.
+  The complete synchronous operation has a configurable 120-second budget
+  (maximum 150 seconds, below the 180-second edge timeout). Timeout returns a typed
+  retryable error and records a safe connection error; durable ingestion/proposal
+  deduplication allows retry without duplicate ledger writes.
+- Refresh failures and revoked grants produce explicit persisted safe error states.
+  Disconnect removes local credentials and blocks future sync, even if remote
+  revocation is unavailable. The response reports whether Google confirmed
+  revocation; users must remove access at Google if confirmation fails. Pending
+  grants are invalidated; a non-secret disconnect tombstone prevents an already
+  exchanging callback from resurrecting credentials. A fresh consent remains possible.
+
+**Pending live verification / production gates:** privately configure provider
+credentials and exact registered callbacks, run real OIDC and Gmail consent,
+refresh/revoke smoke checks over the deployment's HTTPS/proxy topology, verify
+provider verification requirements for Gmail restricted scopes, and provision
+managed secret/key custody, monitored rotation and operational retention controls.
+Local mocked-provider tests cannot establish provider approval or production readiness.
 
 | Area | Implemented control |
 | --- | --- |
@@ -162,7 +202,7 @@ authority and the deterministic validation boundary are the primary controls.
 
 ## Agent and tool safety
 
-The first finance agent is planned as read-only. It may call a fixed allowlist of
+The implemented finance agent is read-only. It may call a fixed allowlist of
 typed service tools. It may not:
 
 - receive raw database credentials or execute SQL;
@@ -375,9 +415,10 @@ private-content capture. Retention and operator access are explicit.
 | Phase 2 | Complete locally | Duplicate/concurrent replay, ownership, source minimization, malformed connector content, retry, and provenance tests |
 | Phase 3 | Complete locally | Prompt-injection separation, schema/provider failure, proposal ownership/state, no-direct-write, GraphQL/UI review, and labelled extraction evaluation |
 | Phase 4 | Complete locally | Owner-scoped candidates, amount/currency/type guards, concurrent writes, false-merge evaluation, evidence retention, audit actions, and safe unmerge |
-| Phase 7 | Planned | Agent tool allowlist, cross-tenant attempts, write/tool injection, grounding |
-| Phase 8 | Planned | OAuth state/PKCE, token encryption/rotation, scope and deletion review |
-| Production | Planned | Threat-model update, backup restore, rate/load abuse, incident runbook |
+| Phase 7 | Implemented locally | Agent tool allowlist, cross-owner/no-write tests, CSRF, bounded execution, grounded deterministic facts |
+| Phase 8 | Implemented locally; live consent/managed keys pending | OIDC issuer/subject mapping, state/PKCE, session CSRF, encrypted grants/rotation, revocation and timeout/replay tests |
+| Phase 9 | Implemented locally | Owner-scoped queue admission/status, fenced leases, bounded retry/backpressure, proposal replay tests |
+| Production | Prepared; hosted acceptance pending | Non-root images, TLS/rate-limit configuration, operational telemetry, local backup/restore drill; hosted abuse/load/restore/deletion review remains required |
 
 Security tests must run against the same authorization paths used by GraphQL,
 background jobs, and agent tools.

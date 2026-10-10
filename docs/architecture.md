@@ -1,10 +1,12 @@
 # Architecture
 
-**Document status:** Phases 1–6 are implemented. The deterministic ledger,
+**Document status:** Phases 1–9 have local-first implementations. The deterministic ledger,
 replay-safe ingestion/provenance model, connector contract, structured AI extraction,
 proposal review, duplicate reconciliation, GraphQL API, and React dashboard are
 implemented. Personalized categorization and deterministic grounded analytics are
-also implemented; the finance agent and production OAuth remain planned.
+also implemented. Read-only agent tools, OIDC sessions, Gmail OAuth, and durable
+extraction jobs are implemented and locally tested. Live provider consent,
+managed keys, and hosted production acceptance remain pending.
 
 ## Goals
 
@@ -30,11 +32,12 @@ SpendGraph AI must:
 | Connector contract, raw events, evidence, idempotent ingestion | 2 | Implemented and test covered |
 | AI extraction, persisted proposals, and explicit review | 3 | Implemented with synthetic evaluation |
 | Duplicate reconciliation | 4 | Implemented with owner review and synthetic evaluation |
-| Personal categorization/correction memory | 5 | Planned |
-| Analytics and deterministic insights | 6 | Planned |
-| Read-only finance agent | 7 | Planned |
-| Real OAuth connector | 8 | Planned |
-| Durable queue/live processing UX | 9+ | Planned |
+| Personal categorization/correction memory | 5 | Implemented |
+| Analytics and deterministic insights | 6 | Implemented |
+| Read-only finance agent | 7 | Implemented with synthetic evaluation |
+| OIDC login and Gmail OAuth connector | 8 | Locally implemented; live consent and managed keys pending |
+| Durable extraction queue/status polling | 9 | Locally implemented; Gmail scheduling deferred |
+| Production containers/telemetry/recovery scripts | 10 | Prepared; hosted acceptance pending |
 
 ## Implemented runtime
 

@@ -1,7 +1,8 @@
 # AI design
 
-**Status: the Phase 3 review-first vertical slice and its first labelled evaluation
-harness are implemented; calibration and the finance agent remain later work.** The
+**Status: the Phase 3 review-first vertical slice and the Phase 7 read-only finance
+agent are implemented with synthetic regression harnesses; production calibration
+and deployment verification remain pending.** The
 backend has a provider-neutral structured
 completion port, deterministic mock, Ollama-compatible `/api/chat` adapter, versioned
 financial-note prompt/schema, bounded input/output handling, persisted proposal
@@ -189,8 +190,9 @@ model/rule version, and any user override.
 
 ## Finance agent
 
-The agent begins only after deterministic ledger and analytics services are tested.
-Its first production version is read-only:
+The Phase 7 agent reuses the deterministic ledger, analytics, obligation, and
+recurring services through narrow read-only protocols. This is a local implementation,
+not a claim of production testing:
 
 ```mermaid
 flowchart LR
@@ -201,14 +203,48 @@ flowchart LR
     Verify --> Explain[Grounded explanation]
 ```
 
-Possible tools include `get_financial_summary`, `get_transactions`,
-`compare_periods`, `get_outstanding_receivables`,
-`get_person_financial_relationship`, and `get_transaction_evidence`.
+The allowlist is `get_financial_summary`, `get_transactions`, `compare_periods`,
+`get_outstanding_receivables`, `get_person_financial_relationship`,
+`get_upcoming_recurring`, and `get_transaction_detail`. Transaction detail references
+canonical ledger records; it does **not** claim independently verified receipt/source
+evidence. Raw source bodies are not exposed.
 
-Tool arguments are typed, user identity comes from server context rather than model
-arguments, and the response generator receives structured results. The agent never
-constructs SQL. LangGraph is considered only if branching, retry, and verification
-state become clearer than a simple Python workflow.
+`POST /api/agent/questions` accepts a question (1–1,000 nonblank characters), an
+optional ISO currency, and optional typed person/transaction IDs. Extra fields,
+including owner/user identity, are rejected. The composition root supplies a trusted
+request-authentication helper, invoked at entry and immediately before **each**
+deterministic service read. Changed identity or revoked credentials fail closed.
+There is no SQL, arbitrary URL/network, mutation, or dynamic tool execution interface.
+JSON content type and an explicit Origin policy protect cookie-authenticated requests.
+The shared session CSRF guard also protects this read-only POST by default; the web
+client forwards the in-memory session token and resolves the configured API origin.
+
+Rules route familiar questions without a model. An optional existing structured
+completion provider may select one enum intent for otherwise unsupported wording;
+it receives no financial records and cannot supply arguments, amounts, or prose.
+Invalid/unavailable intent output has the explicit
+`deterministic_provider_unavailable` mode and does not masquerade as an empty ledger.
+Already understood questions continue to return deterministic data without requiring
+an available provider.
+
+Each request selects one tool, permits at most three service reads, has a default
+10-second deadline (provider selection: 2 seconds), and shares an eight-request
+concurrency gate with no waiting queue. Bodies are capped at 4 KiB, answers at 30 facts
+and 16 KiB, recent transactions at 20 records, and relationship processing rejects
+more than 2,000 returned source rows. Existing analytics/obligation services may read
+more rows internally before the application deadline; deployment-level database
+statement/resource limits are still required. Partial output is never presented
+as a complete list or a completed timed-out query.
+
+Summary and comparison periods are current/previous user-local calendar months
+(exclusive period ends). Recurring forecasts cover 30 local calendar days inclusive.
+Explicit unsupported historical date ranges are rejected rather than substituted.
+Currencies remain separate, and relationship/list subsets are visibly marked.
+
+`FinanceAgentPanel` renders the typed REST result, exact decimal strings, date scope,
+record references, truncation, failure state, and deterministic/model-intent mode.
+The module is inserted by the application composition layer; it requires no ledger
+write controls or GraphQL mutation.
 
 ## Grounded explanations
 
@@ -216,14 +252,24 @@ For “Why did I spend more this month?”, deterministic analysis returns:
 
 - prior and current totals;
 - difference;
-- contribution by category and merchant;
+- contribution by category;
 - transaction count and average-size deltas; and
-- evidence identifiers.
+- canonical record/category references where available.
 
-The model may summarize that object. A verifier checks that every stated amount and
-percentage is present in or deterministically derivable from the tool result.
-Unsupported claims fail closed or are removed. The UI can expose supporting
-transactions.
+In the implemented agent, **no model prose is rendered**. The answer is assembled
+from typed numeric facts with fixed templates. Decimal amounts never pass through
+floating-point arithmetic. Comparison amount/count/average-size deltas and category
+changes are checked against deterministic operands; every displayed value and record
+reference comes from an owner-scoped tool result. Transaction descriptions and raw
+source instructions cannot influence routing or explanation generation.
+
+Run the executable benchmark from the repository root with
+`python evals/agent/run.py` in the configured API environment. Its committed
+`evals/datasets/agent-v1.json` contains 16 synthetic cases for tool selection, exact
+decimals, grounding, partial settlements, currency separation, injection, and
+cross-owner questions/record IDs. The runner exits nonzero on failed cases and prints
+content-free measure counts. These synthetic cases are regression evidence only,
+not production accuracy, live-provider quality, or security certification.
 
 ## Failure policy
 

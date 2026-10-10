@@ -1,7 +1,7 @@
 # SpendGraph data model
 
-**Status: Phases 1–5 persistence and Phase 6 read-only analytics implemented.** Alembic revisions
-`20260724_0002` through `20260727_0007` plus the SQLAlchemy models are the executable
+**Status: Persistence through Phase 9 and read-only analytics/agent implemented.** Alembic revisions
+`20260724_0002` through `20261011_0009` plus the SQLAlchemy models are the executable
 source of truth. This document explains that deployed contract and must change with
 future migrations.
 
@@ -34,6 +34,19 @@ Phase 4 adds:
 
 `UserCorrection`, category rules, merchant category mappings, and assignment metadata
 are implemented. Embeddings and `AIInsight` remain in later phases.
+
+Phase 8 adds issuer/subject identity mappings, opaque hashed browser sessions,
+expiring single-use OAuth state, and owner-linked Gmail credentials. Refresh
+grants are encrypted with a versioned external keyring; source configuration
+contains no plaintext OAuth token. Application login and Gmail authorization
+are separate relationships.
+
+Phase 9 adds owner-scoped durable jobs with typed payloads, unique owner/request
+identities, bounded attempts, scheduled availability, and fenced expiring leases.
+Financial-note jobs return proposal IDs and never approve or post the proposals.
+Job payloads contain private notes and require the same access/retention controls
+as raw financial events. Reclaiming a lease may repeat external inference, but
+replay keys preserve proposal and canonical-ledger identity.
 
 ## Ingestion and proposal relationships
 
