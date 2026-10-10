@@ -75,6 +75,22 @@ class Settings(BaseSettings):
     dev_auth_enabled: bool = True
     dev_user_id: UUID = DEFAULT_DEV_USER_ID
 
+    oidc_issuer: str = Field(default="", max_length=512)
+    oidc_client_id: str = Field(default="", max_length=512)
+    oidc_client_secret: str = Field(default="", repr=False)
+    oidc_redirect_uri: str = "http://localhost:8000/auth/callback"
+    auth_frontend_url: str = "http://localhost:5173"
+    auth_cookie_secure: bool = False
+    auth_session_seconds: int = Field(default=28_800, ge=300, le=86_400)
+    oauth_state_seconds: int = Field(default=600, ge=60, le=900)
+    gmail_client_id: str = ""
+    gmail_client_secret: str = Field(default="", repr=False)
+    gmail_redirect_uri: str = "http://localhost:8000/connections/gmail/callback"
+    gmail_sync_max_results: int = Field(default=20, ge=1, le=50)
+    gmail_operation_timeout_seconds: float = Field(default=120, ge=10, le=150)
+    token_encryption_active_key_id: str = Field(default="", max_length=120)
+    token_encryption_keys: str = Field(default="{}", repr=False)
+
     ai_provider: AIProvider = AIProvider.DISABLED
     ai_base_url: str = "http://127.0.0.1:11434"
     ai_model: str = Field(default="gemma4:e4b", min_length=1, max_length=120)
@@ -263,6 +279,63 @@ class Settings(BaseSettings):
         ):
             msg = "DEV_AUTH_ENABLED must be false in staging and production"
             raise ValueError(msg)
+        deployed = self.app_env in {AppEnvironment.STAGING, AppEnvironment.PRODUCTION}
+        for value in (
+            self.oidc_issuer,
+            self.oidc_redirect_uri,
+            self.auth_frontend_url,
+            self.gmail_redirect_uri,
+        ):
+            if not value:
+                continue
+            parts = urlsplit(value)
+            if (
+                parts.scheme not in {"https", "http"}
+                or not parts.hostname
+                or parts.username
+                or parts.password
+                or parts.query
+                or parts.fragment
+                or (
+                    parts.scheme == "http"
+                    and (deployed or parts.hostname not in {"localhost", "127.0.0.1", "::1"})
+                )
+            ):
+                raise ValueError("OAuth URLs require HTTPS (HTTP loopback only in local tiers)")
+        if (self.oidc_issuer or self.gmail_client_id) and (
+            self.auth_frontend_url not in self.cors_origin_list
+        ):
+            raise ValueError("AUTH_FRONTEND_URL must be an exact configured CORS origin")
+        if deployed and (
+            not self.auth_cookie_secure or not self.oidc_issuer or not self.oidc_client_id
+        ):
+            raise ValueError("Deployed tiers require configured OIDC and secure cookies")
+        if bool(self.oidc_issuer) != bool(self.oidc_client_id):
+            raise ValueError("OIDC_ISSUER and OIDC_CLIENT_ID must be configured together")
+        if self.gmail_client_id and (
+            not self.gmail_client_secret or not self.token_encryption_active_key_id
+        ):
+            raise ValueError("Gmail requires client secret and an external encryption keyring")
+        if self.token_encryption_active_key_id:
+            from cryptography.fernet import Fernet
+
+            try:
+                keys = json.loads(self.token_encryption_keys)
+                if not isinstance(keys, dict) or not keys:
+                    raise ValueError
+                for key_id, key in keys.items():
+                    if (
+                        not isinstance(key_id, str)
+                        or not key_id
+                        or len(key_id) > 120
+                        or not isinstance(key, str)
+                    ):
+                        raise ValueError
+                    Fernet(key.encode("ascii"))
+                if self.token_encryption_active_key_id not in keys:
+                    raise ValueError
+            except (ValueError, TypeError, UnicodeError) as exc:
+                raise ValueError("Invalid external token encryption keyring") from exc
         return self
 
     @property
