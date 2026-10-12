@@ -5,11 +5,12 @@ from typing import cast
 
 import strawberry
 from fastapi import Request
+from graphql import GraphQLError, OperationType, get_operation_ast, parse
 from strawberry.extensions import MaxAliasesLimiter, MaxTokensLimiter, QueryDepthLimiter
 from strawberry.fastapi import GraphQLRouter
 
 from app.ai.contracts import StructuredCompletionProvider
-from app.auth.authenticator import DevelopmentAuthenticator
+from app.auth.session import AuthError, authenticate_request, require_csrf
 from app.core.config import Settings
 from app.db.session import database_from_request
 from app.graphql.context import GraphQLContext
@@ -30,12 +31,30 @@ schema = strawberry.Schema(
 def create_graphql_router(settings: Settings) -> GraphQLRouter[GraphQLContext]:
     """Create a router whose context shares the app factory's settings."""
 
-    authenticator = (
-        DevelopmentAuthenticator(settings.dev_user_id) if settings.dev_auth_enabled else None
-    )
-
     async def context_getter(request: Request) -> GraphQLContext:
-        principal = await authenticator.authenticate(request) if authenticator is not None else None
+        try:
+            principal = await authenticate_request(request)
+        except AuthError:
+            principal = None
+        if request.method == "POST":
+            try:
+                payload = await request.json()
+                operation = (
+                    get_operation_ast(
+                        parse(payload.get("query", ""), max_tokens=2_000),
+                        payload.get("operationName"),
+                    )
+                    if isinstance(payload, dict)
+                    else None
+                )
+            except (ValueError, GraphQLError, TypeError):
+                operation = None
+            if (
+                operation is not None
+                and operation.operation is OperationType.MUTATION
+                and principal is not None
+            ):
+                await require_csrf(request)
         return GraphQLContext(
             settings,
             database_from_request(request),

@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.core.config import AppEnvironment, Settings
 from app.db.session import Database
@@ -101,6 +101,18 @@ async def test_demo_seed_is_idempotent_and_financially_consistent(
     isolated_database: Database,
 ) -> None:
     await _insert_system_categories(isolated_database)
+    # Exercise the migration's integrity guard, not only create_all metadata.
+    async with isolated_database.engine().begin() as connection:
+        await connection.execute(
+            text(
+                "ALTER TABLE transactions ADD CONSTRAINT seed_category_metadata_check CHECK ("
+                "(category_id IS NULL AND category_source IS NULL "
+                "AND category_classifier_version IS NULL AND category_confidence IS NULL "
+                "AND category_overridden = false) OR "
+                "(category_id IS NOT NULL AND category_source IS NOT NULL "
+                "AND category_classifier_version IS NOT NULL AND category_confidence IS NOT NULL))"
+            )
+        )
     today = date(2026, 7, 24)
 
     first = await seed_demo_data(isolated_database, today=today)

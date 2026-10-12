@@ -6,7 +6,8 @@ SpendGraph AI is a deterministic personal-finance ledger built around one rule:
 
 ## Project status
 
-**Phases 1–6 are implemented; Phase 7 read-only finance agent is next.** The repository now
+**Phases 1–9 have local-first implementations; Phase 10 deployment preparation is
+implemented, with live production acceptance pending.** The repository now
 contains:
 
 - exact-decimal transactions with merchants and categories;
@@ -32,13 +33,18 @@ contains:
   keep-separate, and undo actions;
 - an owner-scoped Strawberry GraphQL API;
 - a live React/Apollo dashboard with mutation-and-refresh flows; and
-- reversible PostgreSQL migrations plus an idempotent development seed.
+- reversible PostgreSQL migrations plus an idempotent development seed;
+- a bounded, read-only finance assistant with typed tools and deterministic answers;
+- configurable OIDC login and session-bound CSRF protection;
+- Gmail read-only OAuth connection, encrypted grants, refresh and disconnect; and
+- a PostgreSQL durable extraction queue with crash recovery and status polling.
 
 AI output never posts itself. It remains an untrusted proposal until an authenticated
 user approves it and deterministic services revalidate the canonical transaction,
 obligation, or recurring payment. Transaction approvals pass through reconciliation;
 ambiguous matches require a second explicit merge or keep-separate decision.
-The read-only finance agent and production Gmail OAuth remain later phases.
+Real provider consent, managed-key custody, and hosted production verification
+remain operator-dependent acceptance gates.
 
 ## Run it with Docker
 
@@ -129,9 +135,11 @@ For Google Keep:
 
 The import ignores attachments and trashed/empty notes and accepts at most 64 KiB per
 note. The Gmail adapter uses the official read-only API path and filters likely
-financial messages, but account connection is deliberately unavailable until secure
-OAuth state/PKCE, encrypted token storage, revocation, and deployment credentials
-are implemented in Phase 8.
+financial messages. Account connection requires privately configured Google
+client credentials, exact callback URLs, and an encryption keyring. The
+local-first Phase 8 flow implements state/PKCE,
+encrypted grants, refresh, and revocation; live Google consent is not verified
+by synthetic tests.
 
 ## Configure reconciliation
 
@@ -230,8 +238,8 @@ user/password/name later does not rewrite an existing database.
 - Foreign and absent IDs have the same public not-found behavior.
 - GraphQL applies depth/complexity limits and returns typed, client-safe domain
   problems.
-- The current identity provider is deliberately development-only, not production
-  authentication.
+- The default identity provider is development-only. Disable `DEV_AUTH_ENABLED`
+  and configure the OIDC provider for session-based login outside development.
 
 ### Ingestion and AI review
 
@@ -285,8 +293,8 @@ integrity layer.
 
 The project remains a modular monolith. Connector implementations satisfy one
 fetch/normalize/health contract and register by stable key, so future authorized
-applications can be added without provider conditionals in ledger code. The finance
-agent remains deferred until its deterministic read-only tools and evaluations exist.
+applications can be added without provider conditionals in ledger code. The finance agent uses bounded read-only service tools and deterministic rendering;
+model output may choose a supported intent but never supplies financial facts.
 
 ## GraphQL capabilities
 
@@ -306,6 +314,22 @@ The current API includes:
 - deterministic month comparison, category contributions, and grounded insight
   records; and
 - typed merge, keep-separate, and unmerge mutations.
+
+Authenticated REST endpoints complement GraphQL: `/api/agent/questions` exposes
+bounded read-only questions; `/api/jobs` enqueues/list extraction jobs and exposes
+owner-scoped status, retry/cancel, and `/api/jobs/snapshot`; `/auth` owns OIDC
+login/session/logout; `/connections/gmail` owns connection/sync/refresh/disconnect.
+Session writes require a server-issued CSRF token and the configured exact origin.
+
+The dashboard includes the finance assistant, Gmail connection controls, and
+background-note processing. Successful jobs produce proposals for review, never
+automatic ledger writes. With AI disabled, the agent uses deterministic routing,
+and extraction jobs end with an explicit provider-disabled status. Queue workers
+share the database and configuration with the API; run `make worker` for a local
+non-container worker. Gmail sync is bounded and request-driven, not scheduled.
+`GMAIL_OPERATION_TIMEOUT_SECONDS` defaults to 120 seconds (maximum 150), below
+the proxy's 180-second deadline. A timeout is surfaced explicitly; replay-safe
+ingestion retains previously committed events for a retry.
 
 GraphiQL is available in validated debug environments at the GraphQL endpoint.
 
@@ -330,6 +354,7 @@ GraphiQL is available in validated debug environments at the GraphQL endpoint.
 | Evaluate AI extraction on labelled synthetic notes | `make eval-extraction` |
 | Evaluate duplicate scoring on labelled synthetic pairs | `make eval-reconciliation` |
 | Evaluate deterministic category retrieval | `make eval-categorization` |
+| Evaluate read-only agent behavior on synthetic fixtures | `make eval-agent` |
 | Run the aggregate local gate | `make check` |
 
 Local, non-container processes require Python 3.12+, Node.js 24+, and `make setup`.
@@ -344,12 +369,91 @@ make dev-web
 
 ## Verification
 
+### Local-first production preparation
+
+`docker-compose.production.yml` is a separate deployment topology: a migration
+job, non-root API and worker, unprivileged static web server, and a Caddy HTTPS
+edge. It does not publish API, worker, or database ports and does not seed demo
+data. Configure the ignored `.env.production` with a real database, OIDC provider,
+public origin, and privately provisioned encryption keys before starting it:
+
+```bash
+make prod-config
+make prod
+make prod-smoke DEPLOYMENT_URL=https://your-hostname
+```
+
+Set `PUBLIC_HOSTNAME` to the public DNS hostname. DNS and inbound ports 80/443
+must reach Caddy for certificate issuance. The database is external to this
+topology; provision a managed PostgreSQL service and its backup policy separately.
+Never reuse the development database credentials in production. Compose syntax
+validation is not a successful production deployment.
+
+`/health` is process liveness; `/ready` also checks PostgreSQL with a bounded
+deadline. `/metrics` is disabled unless `METRICS_TOKEN` is set, then requires
+that bearer token. It is deliberately not exposed by the public web proxy;
+scrape it from a trusted internal monitoring network. Metrics label only route
+templates, methods, and status codes, not record IDs or financial input.
+Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to a trusted collector's HTTP trace
+endpoint to enable batched OpenTelemetry export. Traces omit request bodies,
+raw URLs, query strings, cookies, and exception messages.
+Import `monitoring/grafana-dashboard.json` into your Grafana instance and select
+the Prometheus datasource scraping the internal API. It covers API traffic,
+latency/errors, and API-process provider latency/outcomes/reported token usage.
+Unreported token usage, model quality, and monetary cost are not fabricated.
+
+#### Backup and restore drill
+
+Export `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE`, and `PGPASSWORD` privately.
+The default `PGSSLMODE=verify-full` also requires `PGSSLROOTCERT_FILE` pointing
+to the database's trusted CA file. `PGSSLMODE=disable` is only appropriate for
+the isolated local validation database. Scripts use PostgreSQL 17 client
+containers and never put credentials in command arguments.
+
+```bash
+make backup BACKUP_PATH=/private/backups/ledger.dump
+# Point PGDATABASE at a NEW spendgraph_restore_* database before restoring.
+make restore BACKUP_PATH=/private/backups/ledger.dump
+```
+
+Backup refuses to overwrite an existing file. Restore creates a new database
+and refuses an existing target; it never drops the live ledger. Backups contain
+private financial data and encrypted credentials: keep them in encrypted storage
+with access controls, retention, and the separately protected keyring needed for
+recovery. After a restore, apply pending migrations, check readiness, and verify
+record counts and per-currency totals before changing application traffic.
+
+#### Release and incident procedure
+
+1. Back up and perform an isolated restore drill before a schema-changing release.
+2. Build and retain the current and previous reviewed image versions; run migrations
+   once before API/worker startup.
+3. Run HTTPS smoke checks and authenticated ledger, agent, and connector checks.
+   Watch sanitized request/job errors, queue age, provider latency, and database
+   readiness.
+4. For an application rollback, redeploy the previous compatible image. Do not
+   automatically downgrade a financial schema; review migration compatibility
+   and rehearse any required database recovery first.
+5. During an incident, stop affected connector/job processing without deleting
+   volumes, preserve sanitized correlation IDs, revoke compromised sessions and
+   provider grants, rotate affected keys, then replay only idempotent work.
+
+Live OIDC/Gmail consent, managed-key custody, hosted TLS, production backup
+scheduling, alert dashboards, and post-deployment verification require operator
+configuration and remain separate acceptance gates.
+
+Local runtime verification exercised the real dashboard-to-agent route, queued
+extraction with the disabled-provider error visible in polling, unchanged ledger
+records after failure, and non-root/read-only production image startup behind
+the static-web proxy. A separate migrated PostgreSQL database bootstrapped the
+demo ledger successfully and repeated seeding left it unchanged.
+
 The latest local verification includes:
 
-- 206 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
+- 299 PostgreSQL-enabled backend tests, with the opt-in live AI contract excluded
   from the deterministic suite;
 - strict mypy, Ruff lint, and Ruff formatting checks;
-- 37 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
+- 65 frontend tests, ESLint, Prettier, strict TypeScript, and a Vite production
   build;
 - Alembic upgrade/downgrade/re-upgrade coverage;
 - a 24-pair reconciliation benchmark reporting automatic-merge precision `1.0000`,
@@ -403,8 +507,10 @@ the remote checks for a pushed commit.
 | 4 | Duplicate reconciliation | **Complete with owner review and synthetic evaluation** |
 | 5 | Personalized categorization and correction memory | **Complete with non-vector baseline** |
 | 6 | Extended deterministic analytics and grounded explanations | **Complete** |
-| 7 | Read-only finance agent over typed service tools | Planned |
-| 8+ | Authorized external connectors and production hardening | Planned |
+| 7 | Read-only finance agent over typed service tools | Implemented with synthetic evaluation |
+| 8 | OIDC login and Gmail OAuth connector | Implemented locally; live consent and managed keys pending |
+| 9 | Durable extraction jobs and processing-state polling | Implemented locally; Gmail sync scheduling deferred |
+| 10 | Production configuration, telemetry, backup/restore and release procedures | Prepared; hosted production acceptance pending |
 
 The detailed source of truth is the
 [implementation checklist](docs/implementation-checklist.md).

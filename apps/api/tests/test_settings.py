@@ -181,6 +181,12 @@ def test_valid_production_settings_hide_database_credentials_from_repr() -> None
         dev_auth_enabled=False,
         database_url="postgresql+psycopg://app:top-secret@db.example.com/spendgraph",
         cors_origins='["https://app.example.com"]',
+        oidc_issuer="https://identity.example.com",
+        oidc_client_id="spendgraph",
+        oidc_redirect_uri="https://api.example.com/auth/callback",
+        auth_frontend_url="https://app.example.com",
+        gmail_redirect_uri="https://api.example.com/connections/gmail/callback",
+        auth_cookie_secure=True,
     )
 
     assert settings.cors_origin_list == ["https://app.example.com"]
@@ -223,6 +229,13 @@ def test_deployed_environment_can_disable_development_auth() -> None:
         app_env=AppEnvironment.STAGING,
         app_debug=False,
         dev_auth_enabled=False,
+        oidc_issuer="https://identity.example.com",
+        oidc_client_id="spendgraph",
+        oidc_redirect_uri="https://api.example.com/auth/callback",
+        auth_frontend_url="https://app.example.com",
+        cors_origins='["https://app.example.com"]',
+        gmail_redirect_uri="https://api.example.com/connections/gmail/callback",
+        auth_cookie_secure=True,
     )
 
     assert settings.dev_auth_enabled is False

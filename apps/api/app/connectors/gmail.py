@@ -196,7 +196,7 @@ class GmailReceiptConnector:
             ) from exc
 
         envelopes: list[ConnectorEnvelope] = []
-        for reference in page.messages:
+        for reference in page.messages[: self._max_results]:
             message_response = await self._get(
                 f"/gmail/v1/users/me/messages/{reference.id}",
                 params={"format": "full"},

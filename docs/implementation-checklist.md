@@ -1,9 +1,10 @@
 # Implementation checklist
 
-**Last updated:** 2026-07-27
+**Last updated:** 2026-10-11
 
-**Current phase:** Phases 1–6 are implemented through deterministic analytics and
-grounded insights. Phase 7 read-only finance agent is next.
+**Current phase:** Phases 1–9 have locally tested implementations. Phase 10
+deployment preparation is implemented; live provider consent, managed-key custody,
+hosted deployment, and production operational acceptance remain pending.
 
 **Rule:** implement each phase through bounded vertical slices whose acceptance
 behavior is written before code and checked from actual commands.
@@ -370,43 +371,62 @@ summarizes it.
 
 ## Phase 7 — read-only finance agent
 
-- [ ] Define narrow typed tools over existing services.
-- [ ] Inject user identity server-side and re-authorize inside every tool.
-- [ ] Implement intent/router, allowlist, execution limits, and result verifier.
-- [ ] Keep SQL, arbitrary network access, and write tools unavailable.
-- [ ] Add deterministic fallback when the provider is unavailable.
-- [ ] Adopt LangGraph only if state-machine complexity justifies it.
-- [ ] Evaluate tool choice, numerical correctness, grounding, unsupported claims,
+- [x] Define narrow typed tools over existing services.
+- [x] Inject user identity server-side and re-authorize inside every tool.
+- [x] Implement intent/router, allowlist, execution limits, and result verifier.
+- [x] Keep SQL, arbitrary network access, and write tools unavailable.
+- [x] Add deterministic fallback when the provider is unavailable.
+- [x] Evaluate framework need; bounded workflow does not justify LangGraph.
+- [x] Evaluate tool choice, numerical correctness, grounding, unsupported claims,
   latency, cost, prompt injection, and cross-tenant attempts.
+
+The committed 16-case synthetic regression passes tool, numerical, grounding, and
+safety assertions. Runtime returns typed facts and deterministic wording, not
+unchecked model prose. Provider latency/token metadata is measured when reported;
+unpriced-provider monetary cost is explicitly unavailable, not invented.
 
 ## Phase 8 — real external connector
 
-- [ ] Complete provider data inventory and retention review.
-- [ ] Use official OAuth/API with least scopes, state, PKCE, and exact callbacks.
-- [ ] Encrypt tokens with managed keys; implement disconnect/revocation.
-- [ ] Filter financial relevance before model calls.
-- [ ] Store minimum content and bounded provenance.
-- [ ] Add contract fixtures, rate-limit/retry tests, and sync observability.
+- [x] Document stored/minimized provider fields and local credential lifecycle.
+- [x] Use official OAuth/API with read-only scopes, state, PKCE, and exact callbacks.
+- [x] Implement OIDC identity mapping, opaque HttpOnly sessions, and session CSRF.
+- [x] Encrypt grants with a versioned externally provisioned keyring and implement
+  refresh, local disconnect, and explicit provider-revocation outcome.
+- [ ] Provision managed keys and complete production retention/deletion review.
+- [x] Filter financial relevance before model calls.
+- [x] Store minimum content and bounded provenance.
+- [x] Add mocked official-provider contracts and bounded sync/error observability.
+- [ ] Verify real Google/OIDC consent, scopes, rate limits, and credentials in the
+  deployment environment.
 
 ## Phase 9 — asynchronous and real-time UX
 
-- [ ] Measure the need for durable independent work.
-- [ ] Implement transactional job/outbox or justified queue.
-- [ ] Add bounded retries, jitter, dead-letter/review behavior, and backpressure.
-- [ ] Make every worker handler tenant-aware and idempotent.
-- [ ] Expose processing state through polling, subscription, or WebSocket based on
-  measured UX need.
+- [x] Identify long-running extraction and browser disconnect/crash recovery as the
+  durability use case; no throughput benchmark or broker need is claimed.
+- [x] Implement transactional PostgreSQL jobs with skip-locked claims and fenced leases.
+- [x] Add bounded retries, jitter, dead-letter/review behavior, and backpressure.
+- [x] Make financial-note extraction tenant-aware and replay-safe.
+- [x] Expose owner-scoped state and queue snapshot with bounded polling.
+- [ ] Measure production load and connector lag; add Gmail scheduling only when its
+  durable workflow is implemented and tested.
 
 ## Phase 10 — observability and deployment
 
-- [ ] Production images and environment configuration.
+- [x] Production images and separate fail-closed environment configuration.
 - [ ] Managed PostgreSQL, backups, and tested restore.
-- [ ] TLS, production auth, rate limits, and GraphQL cost controls.
-- [ ] Request/job correlation IDs and structured redacted logs.
-- [ ] OpenTelemetry-compatible traces and service-level metrics.
+- [x] Prepare TLS edge, OIDC auth, proxy rate limits, and existing GraphQL cost controls.
+- [x] Request/job correlation IDs and structured redacted logs.
+- [x] OpenTelemetry-compatible API traces and bounded service/provider metrics.
 - [ ] AI quality/latency/token/cost and connector lag dashboards.
-- [ ] Migration, rollback, incident, deletion, and token-rotation runbooks.
+- [x] Commit API/provider latency, outcomes, and reported-token Grafana dashboard.
+- [x] Validate local backup/isolated restore scripts with exact-decimal preservation.
+- [x] Document migration, application rollback, incident, and credential recovery procedures.
+- [ ] Rehearse full deletion, managed-key rotation, alerts, and hosted restore procedures.
 - [ ] Deployment smoke tests and post-deploy verification.
+
+The committed HTTPS smoke script and proxy configurations are locally validated;
+they do not substitute for hosted TLS, live authentication, managed backups, or
+operator post-deployment acceptance.
 
 ## Explicitly deferred without evidence
 
